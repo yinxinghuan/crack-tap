@@ -277,24 +277,30 @@
   const THEMES = {
     crystal: {
       bg: '#060713', accent: '#9b6bff',
-      objA: '#7d56e8', objB: '#3a2a72', rim: '#c9b3ff',
-      crack: '#eadcff', core: '#b98bff',
+      objA: '#9a78ff', objB: '#2c1d57', rim: '#d8c6ff',
+      hi: '#3a2a72', lo: '#170f30',
+      groove: '#140a30', edge: '#f3ecff', molten: false, glow: 9,
+      core: '#c7a4ff', spec: 'rgba(255,255,255,0.95)', specR: 0.32, specSoft: false,
       shards: ['#8c63f0', '#6b47d0', '#a988ff', '#5436a8', '#cdb6ff'],
-      root: 261.63, sfx: 'glass',
+      tex: 'facet', root: 261.63, sfx: 'glass',
     },
     ceramic: {
       bg: '#140d09', accent: '#e9a06b',
-      objA: '#d98a52', objB: '#8a4f2c', rim: '#ffd9b0',
-      crack: '#3a1f10', core: '#ffbf86',
+      objA: '#e7a368', objB: '#7c4527', rim: '#ffe2c0',
+      hi: '#f3c79a', lo: '#5a3017',
+      groove: '#3a1f0f', edge: '#ffe0bb', molten: false, glow: 3,
+      core: '#ffcf9a', spec: 'rgba(255,240,225,0.5)', specR: 0.5, specSoft: true,
       shards: ['#d98a52', '#b06736', '#e8a86e', '#8a4f2c', '#f0c89a'],
-      root: 220.00, sfx: 'clay',
+      tex: 'speckle', root: 220.00, sfx: 'clay',
     },
     geode: {
       bg: '#0a0705', accent: '#ff7a2b',
-      objA: '#2b2622', objB: '#0e0c0a', rim: '#5a4030',
-      crack: '#ff8a3d', core: '#ffd24a',
+      objA: '#36302a', objB: '#0c0a08', rim: '#6a4a32',
+      hi: '#4a4038', lo: '#070605',
+      groove: '#140a04', edge: '#ffc55a', molten: true, glow: 16,
+      core: '#ffd24a', spec: 'rgba(255,210,150,0.85)', specR: 0.26, specSoft: false,
       shards: ['#2b2622', '#1a1714', '#3a322c', '#ff7a2b', '#ffb14a'],
-      root: 196.00, sfx: 'rock',
+      tex: 'mottle', root: 196.00, sfx: 'rock',
     },
   };
 
@@ -363,7 +369,51 @@
       spawnT: now,
       seed: Math.random() * 1000,
       shatterShape: makeShardShape(),
+      tex: makeTexture(theme.tex),
     };
+  }
+
+  // Per-object surface detail in unit-circle space (radius 1), generated once
+  // so it doesn't shimmer frame-to-frame. Scaled by R at draw time.
+  function makeTexture(kind) {
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    if (kind === 'facet') {
+      const lines = [], spark = [];
+      for (let i = 0; i < 9; i++) {
+        const a = Math.random() * Math.PI;
+        const off = rnd(-0.8, 0.8);
+        lines.push({ a, off, bright: Math.random() < 0.35 });
+      }
+      for (let i = 0; i < 13; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const rr = Math.sqrt(Math.random()) * 0.86;
+        spark.push({ x: Math.cos(ang) * rr, y: Math.sin(ang) * rr, r: rnd(0.012, 0.03) });
+      }
+      return { kind, lines, spark };
+    }
+    if (kind === 'speckle') {
+      const dots = [];
+      for (let i = 0; i < 110; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const rr = Math.sqrt(Math.random()) * 0.95;
+        dots.push({ x: Math.cos(ang) * rr, y: Math.sin(ang) * rr,
+                    r: rnd(0.006, 0.022), d: Math.random() < 0.5, a: rnd(0.05, 0.16) });
+      }
+      return { kind, dots };
+    }
+    // mottle (rock)
+    const blobs = [], flecks = [];
+    for (let i = 0; i < 18; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rr = Math.sqrt(Math.random()) * 0.9;
+      blobs.push({ x: Math.cos(ang) * rr, y: Math.sin(ang) * rr, r: rnd(0.06, 0.2), a: rnd(0.12, 0.3) });
+    }
+    for (let i = 0; i < 10; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rr = Math.sqrt(Math.random()) * 0.88;
+      flecks.push({ x: Math.cos(ang) * rr, y: Math.sin(ang) * rr, r: rnd(0.015, 0.05), a: rnd(0.08, 0.2) });
+    }
+    return { kind, blobs, flecks };
   }
 
   // ----- Crack network -------------------------------------------------------
@@ -386,8 +436,10 @@
       const crack = { pts: [{ x: ox, y: oy }], grow: 0, segs, energy, fork: [] };
       let px = ox, py = oy, a = ang;
       for (let s = 0; s < segs; s++) {
-        const step = R * (0.16 + Math.random() * 0.16);
-        a += (Math.random() - 0.5) * 1.1;
+        const step = R * (0.1 + Math.random() * 0.12);
+        // fractures run fairly straight, then kink sharply
+        a += (Math.random() - 0.5) * 0.32;
+        if (Math.random() < 0.2) a += (Math.random() - 0.5) * 1.7;
         px += Math.cos(a) * step;
         py += Math.sin(a) * step;
         const d = Math.hypot(px, py);
@@ -395,12 +447,12 @@
         crack.pts.push({ x: px, y: py });
         // occasional fork
         if (s > 0 && Math.random() < 0.35) {
-          let fx = px, fy = py, fa = a + (Math.random() - 0.5) * 2.2;
+          let fx = px, fy = py, fa = a + (Math.random() < 0.5 ? 1 : -1) * (0.7 + Math.random() * 0.9);
           const fpts = [{ x: px, y: py }];
-          const fsegs = 2 + Math.round(Math.random() * 3);
+          const fsegs = 2 + Math.round(Math.random() * 4);
           for (let k = 0; k < fsegs; k++) {
-            const fstep = R * (0.12 + Math.random() * 0.12);
-            fa += (Math.random() - 0.5) * 1.2;
+            const fstep = R * (0.08 + Math.random() * 0.1);
+            fa += (Math.random() - 0.5) * 0.4;
             fx += Math.cos(fa) * fstep; fy += Math.sin(fa) * fstep;
             const fd = Math.hypot(fx, fy);
             if (fd > R * 0.97) { const kk = (R * 0.97) / fd; fx *= kk; fy *= kk; }
@@ -417,36 +469,66 @@
   // Pre-cut the disc into jagged sectors × 2 rings so a shatter looks like a
   // genuine fracture rather than a particle puff. Each shard is a polygon
   // (local coords) + its centroid offset for launch direction.
+  // Voronoi fracture: scatter irregular seed points, clip the disc by the
+  // perpendicular bisectors against nearby seeds → genuine shatter cells of
+  // widely varying angular shape & size (not a pie/ring pattern).
   function makeShardShape() {
-    const sectors = 9 + Math.floor(Math.random() * 4);   // 9..12
-    const midR = 0.46 + Math.random() * 0.1;
-    const angs = [];
-    for (let i = 0; i < sectors; i++) {
-      angs.push(i / sectors * Math.PI * 2 + (Math.random() - 0.5) * 0.4);
+    const DN = 30;
+    const disc = [];
+    for (let i = 0; i < DN; i++) {
+      const a = i / DN * Math.PI * 2;
+      disc.push({ x: Math.cos(a), y: Math.sin(a) });
     }
-    angs.push(angs[0] + Math.PI * 2);
-    const ring = (i, rr) => {
-      const a = angs[i];
-      const jr = rr * (0.86 + Math.random() * 0.22);
-      return { x: Math.cos(a) * jr, y: Math.sin(a) * jr };
-    };
-    const outer = [], mid = [];
-    for (let i = 0; i <= sectors; i++) { outer.push(ring(i, 1)); mid.push(ring(i, midR)); }
+    const seeds = [];
+    const n = 15 + (Math.random() * 7 | 0);
+    for (let i = 0; i < n; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rr = Math.pow(Math.random(), 0.62) * 0.96;
+      seeds.push({ x: Math.cos(ang) * rr, y: Math.sin(ang) * rr });
+    }
+    // a small cluster near a random impact → fine slivers there
+    const ia = Math.random() * Math.PI * 2, ir = Math.random() * 0.5;
+    const ix = Math.cos(ia) * ir, iy = Math.sin(ia) * ir;
+    for (let i = 0; i < 4; i++) {
+      seeds.push({ x: ix + (Math.random() - 0.5) * 0.34, y: iy + (Math.random() - 0.5) * 0.34 });
+    }
+
+    function intersect(p, q, mx, my, nx, ny) {
+      const d1 = (p.x - mx) * nx + (p.y - my) * ny;
+      const d2 = (q.x - mx) * nx + (q.y - my) * ny;
+      const t = d1 / (d1 - d2);
+      return { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
+    }
+    function clip(poly, ax, ay, bx, by) {
+      const mx = (ax + bx) / 2, my = (ay + by) / 2, nx = bx - ax, ny = by - ay;
+      const inside = p => ((p.x - mx) * nx + (p.y - my) * ny) <= 0;
+      const out = [];
+      for (let i = 0; i < poly.length; i++) {
+        const cur = poly[i], prv = poly[(i + poly.length - 1) % poly.length];
+        const ci = inside(cur), pi = inside(prv);
+        if (ci) { if (!pi) out.push(intersect(prv, cur, mx, my, nx, ny)); out.push(cur); }
+        else if (pi) out.push(intersect(prv, cur, mx, my, nx, ny));
+      }
+      return out;
+    }
+
     const shards = [];
-    // inner core polygon
-    const core = [];
-    for (let i = 0; i < sectors; i++) core.push(mid[i]);
-    shards.push(core);
-    // outer ring trapezoids
-    for (let i = 0; i < sectors; i++) {
-      shards.push([ mid[i], outer[i], outer[i + 1], mid[i + 1] ]);
-    }
-    return shards.map(poly => {
+    for (let i = 0; i < seeds.length; i++) {
+      let poly = disc;
+      const others = seeds
+        .map((s, j) => ({ j, d: (s.x - seeds[i].x) ** 2 + (s.y - seeds[i].y) ** 2 }))
+        .filter(o => o.j !== i).sort((a, b) => a.d - b.d).slice(0, 12);
+      for (const o of others) {
+        poly = clip(poly, seeds[i].x, seeds[i].y, seeds[o.j].x, seeds[o.j].y);
+        if (poly.length < 3) break;
+      }
+      if (poly.length < 3) continue;
       let cxp = 0, cyp = 0;
       poly.forEach(p => { cxp += p.x; cyp += p.y; });
       cxp /= poly.length; cyp /= poly.length;
-      return { verts: poly.map(p => ({ x: p.x - cxp, y: p.y - cyp })), cx: cxp, cy: cyp };
-    });
+      shards.push({ verts: poly.map(p => ({ x: p.x - cxp, y: p.y - cyp })), cx: cxp, cy: cyp });
+    }
+    return shards;
   }
 
   function shatter(energy) {
@@ -465,6 +547,7 @@
         rot: 0, vr: (Math.random() - 0.5) * 9,
         verts: sh.verts,
         color: pal[idx % pal.length],
+        edge: theme.edge, molten: theme.molten,
         life: SHARD_LIFE, max: SHARD_LIFE,
         scale: o.r,
       });
@@ -596,6 +679,7 @@
     document.documentElement.style.setProperty('--bg', theme.bg);
     document.documentElement.style.setProperty('--accent', theme.accent);
     [...dotsEl.children].forEach(d => d.classList.toggle('active', d.dataset.t === themeName));
+    if (state.obj) state.obj.tex = makeTexture(theme.tex);
   }
 
   // ----- Audio ---------------------------------------------------------------
@@ -868,81 +952,222 @@
     const jy = charging ? (Math.random() - 0.5) * c * 9 * baseScale : 0;
     const R = o.r * (0.4 + 0.6 * ease) * (1 + c * 0.04);
 
+    // contact shadow on the ground (world space, doesn't follow charge jitter)
+    ctx.save();
+    ctx.globalAlpha = 0.5 * ease;
+    const sh = ctx.createRadialGradient(cx, cy + R * 1.04, 0, cx, cy + R * 1.04, R * 0.95);
+    sh.addColorStop(0, 'rgba(0,0,0,0.55)');
+    sh.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sh;
+    ctx.save();
+    ctx.translate(cx, cy + R * 1.04);
+    ctx.scale(1, 0.26);
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.95, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.restore();
+
     ctx.save();
     ctx.translate(cx + jx, cy + jy);
+    const k = R / o.r;
 
-    // body
-    const grad = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R);
-    grad.addColorStop(0, theme.objA);
-    grad.addColorStop(1, theme.objB);
-    ctx.beginPath();
-    ctx.arc(0, 0, R, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.shadowColor = theme.objA;
-    ctx.shadowBlur = (10 + c * 30) * baseScale;
+    // ── body: lit sphere (light from upper-left) ──
+    const lx = -R * 0.42, ly = -R * 0.46;
+    const body = ctx.createRadialGradient(lx, ly, R * 0.05, 0, 0, R * 1.08);
+    body.addColorStop(0, theme.hi);
+    body.addColorStop(0.42, theme.objA);
+    body.addColorStop(0.82, theme.objB);
+    body.addColorStop(1, theme.lo);
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fillStyle = body;
+    ctx.shadowColor = theme.molten ? theme.core : theme.objA;
+    ctx.shadowBlur = (6 + c * 26) * baseScale;
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // hot inner core glow as it charges (energy building)
+    // clip to body for everything surface-bound
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.clip();
+
+    // ambient occlusion — dark terminator opposite the light
+    const ao = ctx.createRadialGradient(R * 0.34, R * 0.4, R * 0.2, R * 0.2, R * 0.28, R * 1.25);
+    ao.addColorStop(0, 'rgba(0,0,0,0)');
+    ao.addColorStop(1, theme.lo);
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = ao;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+
+    drawTexture(o.tex, R);
+
+    // inner core glow as it charges (energy building under the shell)
     if (c > 0.02) {
       const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
       cg.addColorStop(0, theme.core);
-      cg.addColorStop(Math.min(0.8, 0.15 + c * 0.6), 'rgba(0,0,0,0)');
+      cg.addColorStop(Math.min(0.85, 0.12 + c * 0.65), 'rgba(0,0,0,0)');
       cg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.globalAlpha = 0.35 + c * 0.5;
+      ctx.globalAlpha = (theme.molten ? 0.55 : 0.4) + c * 0.5;
       ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
       ctx.fillStyle = cg; ctx.fill();
       ctx.globalAlpha = 1;
     }
 
-    // rim light
+    // cracks — lit fissures (molten for geode)
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
+    const dmgGlow = Math.min(1, o.damage / o.toughness);
+    for (const cr of o.cracks) {
+      cr.grow = Math.min(1, cr.grow + 0.14);
+      drawCrack(cr.pts, cr.grow, k, 1, dmgGlow);
+      for (const f of cr.fork) {
+        f.grow = Math.min(1, f.grow + 0.12);
+        drawCrack(f.pts, f.grow, k, 0.62, dmgGlow);
+      }
+    }
+    ctx.restore(); // unclip
+
+    // ── specular highlight (sits on top, glassy) ──
+    const sx = -R * 0.36, sy = -R * 0.42, sr = R * theme.specR;
+    const spec = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+    spec.addColorStop(0, theme.spec);
+    spec.addColorStop(theme.specSoft ? 0.55 : 0.28, theme.specSoft
+      ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)');
+    spec.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fillStyle = spec; ctx.fill();
+    if (!theme.specSoft) {                       // tight glint for glossy materials
+      ctx.beginPath();
+      ctx.arc(sx - sr * 0.12, sy - sr * 0.12, sr * 0.16, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.fill();
+    }
+
+    // rim light on the lit side only
     ctx.beginPath();
-    ctx.arc(0, 0, R - baseScale, 0, Math.PI * 2);
+    ctx.arc(0, 0, R - baseScale, Math.PI * 1.05, Math.PI * 1.95);
     ctx.strokeStyle = theme.rim;
-    ctx.globalAlpha = 0.4;
+    ctx.globalAlpha = 0.55;
     ctx.lineWidth = 2 * baseScale;
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // cracks (clipped to body)
-    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.clip();
-    const k = R / o.r;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    for (const cr of o.cracks) {
-      cr.grow = Math.min(1, cr.grow + 0.12);
-      drawCrackPath(cr.pts, cr.grow, k, 2.2 * baseScale, theme.crack);
-      for (const f of cr.fork) {
-        f.grow = Math.min(1, f.grow + 0.1);
-        drawCrackPath(f.pts, f.grow, k, 1.5 * baseScale, theme.crack);
-      }
-    }
     ctx.restore();
   }
 
-  function drawCrackPath(pts, grow, k, lw, color) {
-    if (pts.length < 2) return;
+  function drawTexture(tex, R) {
+    if (!tex) return;
+    if (tex.kind === 'facet') {
+      ctx.lineWidth = 1 * baseScale;
+      for (const l of tex.lines) {
+        const dx = Math.cos(l.a), dy = Math.sin(l.a);
+        const px = -dy * l.off * R, py = dx * l.off * R;
+        ctx.beginPath();
+        ctx.moveTo(px - dx * R * 1.2, py - dy * R * 1.2);
+        ctx.lineTo(px + dx * R * 1.2, py + dy * R * 1.2);
+        ctx.strokeStyle = l.bright ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.22)';
+        ctx.stroke();
+      }
+      for (const s of tex.spark) {
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath(); ctx.arc(s.x * R, s.y * R, s.r * R, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    } else if (tex.kind === 'speckle') {
+      for (const d of tex.dots) {
+        ctx.globalAlpha = d.a;
+        ctx.fillStyle = d.d ? '#000' : '#fff';
+        ctx.beginPath(); ctx.arc(d.x * R, d.y * R, d.r * R, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (tex.kind === 'mottle') {
+      for (const b of tex.blobs) {
+        ctx.globalAlpha = b.a;
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(b.x * R, b.y * R, b.r * R, 0, Math.PI * 2); ctx.fill();
+      }
+      for (const f of tex.flecks) {
+        ctx.globalAlpha = f.a;
+        ctx.fillStyle = theme.hi;
+        ctx.beginPath(); ctx.arc(f.x * R, f.y * R, f.r * R, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function trimPts(pts, grow, k) {
     const total = pts.length - 1;
     const shown = total * grow;
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x * k, pts[0].y * k);
+    const out = [{ x: pts[0].x * k, y: pts[0].y * k }];
     for (let i = 1; i < pts.length; i++) {
       if (i - 1 >= shown) {
         const f = shown - (i - 1);
         if (f <= 0) break;
         const px = pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f;
         const py = pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f;
-        ctx.lineTo(px * k, py * k);
+        out.push({ x: px * k, y: py * k });
         break;
       }
-      ctx.lineTo(pts[i].x * k, pts[i].y * k);
+      out.push({ x: pts[i].x * k, y: pts[i].y * k });
     }
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lw;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 6;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    return out;
+  }
+
+  // Build a tapered ribbon polygon along P: wide at the origin, narrowing to
+  // a sharp hair-thin tip — reads as a real fracture, not a uniform tube.
+  function crackPoly(P, wStart) {
+    const n = P.length;
+    if (n < 2) return null;
+    const L = [], R = [];
+    for (let i = 0; i < n; i++) {
+      let tx, ty;
+      if (i === 0) { tx = P[1].x - P[0].x; ty = P[1].y - P[0].y; }
+      else if (i === n - 1) { tx = P[n - 1].x - P[n - 2].x; ty = P[n - 1].y - P[n - 2].y; }
+      else { tx = P[i + 1].x - P[i - 1].x; ty = P[i + 1].y - P[i - 1].y; }
+      const len = Math.hypot(tx, ty) || 1;
+      const nx = -ty / len, ny = tx / len;
+      const f = i / (n - 1);
+      const w = wStart * Math.pow(1 - f, 0.62) * 0.5 + 0.15;
+      L.push({ x: P[i].x + nx * w, y: P[i].y + ny * w });
+      R.push({ x: P[i].x - nx * w, y: P[i].y - ny * w });
+    }
+    return { L, R };
+  }
+
+  function drawCrack(pts, grow, k, scale, dmgGlow) {
+    const P = trimPts(pts, grow, k);
+    if (P.length < 2) return;
+    const wStart = 3.2 * scale * baseScale * (0.7 + dmgGlow * 0.6);
+    const rb = crackPoly(P, wStart);
+    if (!rb) return;
+    ctx.beginPath();
+    ctx.moveTo(rb.L[0].x, rb.L[0].y);
+    for (let i = 1; i < rb.L.length; i++) ctx.lineTo(rb.L[i].x, rb.L[i].y);
+    for (let i = rb.R.length - 1; i >= 0; i--) ctx.lineTo(rb.R[i].x, rb.R[i].y);
+    ctx.closePath();
+
+    if (theme.molten) {
+      ctx.save();
+      ctx.shadowColor = theme.core;
+      ctx.shadowBlur = (7 + dmgGlow * 12) * baseScale;
+      ctx.fillStyle = theme.core;
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(255,243,206,0.72)';   // white-hot center
+      ctx.fill();
+    } else {
+      ctx.fillStyle = theme.groove;               // dark open fracture
+      ctx.fill();
+      // thin lit lip on the light-facing edge only
+      ctx.beginPath();
+      ctx.moveTo(rb.L[0].x, rb.L[0].y);
+      for (let i = 1; i < rb.L.length; i++) ctx.lineTo(rb.L[i].x, rb.L[i].y);
+      ctx.strokeStyle = theme.edge;
+      ctx.globalAlpha = 0.45;
+      ctx.lineWidth = Math.max(0.6, 0.7 * baseScale);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
   }
 
   function drawShards() {
@@ -952,12 +1177,27 @@
       ctx.globalAlpha = a;
       ctx.translate(s.x, s.y);
       ctx.rotate(s.rot);
+      const sc = s.scale;
       ctx.beginPath();
-      ctx.moveTo(s.verts[0].x * s.scale, s.verts[0].y * s.scale);
-      for (let i = 1; i < s.verts.length; i++) ctx.lineTo(s.verts[i].x * s.scale, s.verts[i].y * s.scale);
+      ctx.moveTo(s.verts[0].x * sc, s.verts[0].y * sc);
+      for (let i = 1; i < s.verts.length; i++) ctx.lineTo(s.verts[i].x * sc, s.verts[i].y * sc);
       ctx.closePath();
       ctx.fillStyle = s.color;
       ctx.fill();
+      // single-axis facet shading: one lit face, one shaded face
+      const g = ctx.createLinearGradient(-sc * 0.45, -sc * 0.5, sc * 0.4, sc * 0.55);
+      g.addColorStop(0, 'rgba(255,255,255,0.16)');
+      g.addColorStop(0.42, 'rgba(255,255,255,0)');
+      g.addColorStop(1, 'rgba(0,0,0,0.42)');
+      ctx.fillStyle = g;
+      ctx.fill();
+      // thin lit edge — just enough to separate fragments, no white halo
+      ctx.strokeStyle = s.edge;
+      ctx.lineWidth = 0.75 * baseScale;
+      ctx.globalAlpha = a * (s.molten ? 0.9 : 0.4);
+      if (s.molten) { ctx.shadowColor = s.edge; ctx.shadowBlur = 7 * baseScale; }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
       ctx.restore();
     }
     ctx.globalAlpha = 1;
@@ -1061,7 +1301,7 @@
     ctx.restore();
 
     if (state.flash > 0) {
-      ctx.globalAlpha = Math.min(0.6, state.flash * 0.6);
+      ctx.globalAlpha = Math.min(0.42, state.flash * 0.5);
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, W, H);
       ctx.globalAlpha = 1;
