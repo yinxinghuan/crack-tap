@@ -228,7 +228,7 @@
     <div class="label" id="label">Cracked</div>
     <div class="counter" id="counter">0</div>
     <div class="combo" id="combo">COMBO ×1</div>
-    <div class="hint" id="hint">Press &amp; hold — release to crack</div>
+    <div class="hint" id="hint">Press &amp; hold — fill the ring to shatter</div>
     <div class="fever" id="fever">FEVER!</div>
   </div>
 
@@ -264,7 +264,7 @@
     <div class="dot" data-t="geode"></div>
   </div>
 
-  <div class="credits">Charge. Release. Shatter.</div>
+  <div class="credits">Hold · Crack · Shatter</div>
 
 <script>
 (() => {
@@ -333,7 +333,8 @@
   let themeName = 'crystal';
   let theme = THEMES[themeName];
 
-  const CHARGE_TIME = 1.05;          // sec of hold to reach full charge
+  const CHARGE_TIME = 1.05;          // audio filter ramp reference only
+  const FILL_RATE = 1.0;             // integrity drained per sec of hold (×fillMul)
   const COMBO_WINDOW = 2.2;          // sec between shatters to keep combo
   const FEVER_COMBO = 4;             // combo count that triggers fever
   const SHARD_LIFE = 1.5;
@@ -346,10 +347,8 @@
     lastShatterT: -999,
     fever: false,
 
-    obj: null,             // current object {r, toughness, damage, cracks[], spawnT, jitterSeed}
+    obj: null,             // current object {r, toughness, damage, cracks[], ...}
     holding: false,
-    chargeStart: 0,
-    charge: 0,
     shards: [],            // flying shard polygons
     chips: [],             // small impact particles
     rings: [],             // shockwave rings
@@ -361,16 +360,20 @@
   function objRadius() { return Math.min(W, H) * 0.205; }
 
   function spawnObject(now) {
-    state.obj = {
+    const o = {
       r: objRadius(),
-      toughness: 0.5 + Math.random() * 0.4,      // 0.5..0.9 (full charge one-shots)
+      toughness: 1,              // gauge is damage/toughness; fill time set by FILL_RATE
       damage: 0,
+      lastGauge: 0,
+      fillMul: 0.82 + Math.random() * 0.55,   // per-orb stress speed (rhythm variety)
       cracks: [],
       spawnT: now,
       seed: Math.random() * 1000,
       shatterShape: makeShardShape(),
       tex: makeTexture(theme.tex),
     };
+    buildCrackNetwork(o);
+    state.obj = o;
   }
 
   // Per-object surface detail in unit-circle space (radius 1), generated once
@@ -417,52 +420,58 @@
   }
 
   // ----- Crack network -------------------------------------------------------
-  // A crack is a list of points growing from an origin. On each strike we seed
-  // branches proportional to the strike energy; they extend over ~0.22s and
-  // recursively fork. Purely visual accumulation — damage is the scalar gate.
-  function addCracks(energy, originAngle) {
-    const o = state.obj;
-    if (!o) return;
+  // The FULL fracture is generated once at spawn, radiating from a single
+  // impact point. Each branch carries a `revealAt` threshold (0..1): as the
+  // integrity gauge fills (damage/toughness), branches spider out in order,
+  // so the player literally watches the object stress and break apart. No
+  // randomness at draw time → smooth, readable cause→effect.
+  function buildCrackNetwork(o) {
     const R = o.r;
-    const branches = 2 + Math.round(energy * 7);          // 2..9 main branches
-    const baseAng = originAngle != null
-      ? originAngle
-      : Math.random() * Math.PI * 2;
-    const ox = Math.cos(baseAng) * R * (0.15 + Math.random() * 0.25);
-    const oy = Math.sin(baseAng) * R * (0.15 + Math.random() * 0.25);
+    const baseAng = Math.random() * Math.PI * 2;
+    const ox = Math.cos(baseAng) * R * (0.05 + Math.random() * 0.18);
+    const oy = Math.sin(baseAng) * R * (0.05 + Math.random() * 0.18);
+    const branches = 7 + (Math.random() * 4 | 0);          // 7..10 main cracks
+    o.cracks = [];
     for (let b = 0; b < branches; b++) {
-      const ang = Math.random() * Math.PI * 2;
-      const segs = 3 + Math.round(energy * 5 + Math.random() * 3);
-      const crack = { pts: [{ x: ox, y: oy }], grow: 0, segs, energy, fork: [] };
-      let px = ox, py = oy, a = ang;
+      // spread roughly evenly around the impact, with jitter
+      const a0 = (b / branches) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
+      const segs = 4 + (Math.random() * 4 | 0);
+      const crack = { pts: [{ x: ox, y: oy }], fork: [],
+                      revealAt: 0, span: 0 };
+      let px = ox, py = oy, a = a0;
       for (let s = 0; s < segs; s++) {
-        const step = R * (0.1 + Math.random() * 0.12);
-        // fractures run fairly straight, then kink sharply
-        a += (Math.random() - 0.5) * 0.32;
-        if (Math.random() < 0.2) a += (Math.random() - 0.5) * 1.7;
+        const step = R * (0.13 + Math.random() * 0.13);
+        a += (Math.random() - 0.5) * 0.34;
+        if (Math.random() < 0.22) a += (Math.random() - 0.5) * 1.6;  // sharp kink
         px += Math.cos(a) * step;
         py += Math.sin(a) * step;
         const d = Math.hypot(px, py);
         if (d > R * 0.97) { const k = (R * 0.97) / d; px *= k; py *= k; }
         crack.pts.push({ x: px, y: py });
-        // occasional fork
-        if (s > 0 && Math.random() < 0.35) {
-          let fx = px, fy = py, fa = a + (Math.random() < 0.5 ? 1 : -1) * (0.7 + Math.random() * 0.9);
+        if (s > 0 && Math.random() < 0.4) {
+          let fx = px, fy = py, fa = a + (Math.random() < 0.5 ? 1 : -1) * (0.6 + Math.random() * 0.9);
           const fpts = [{ x: px, y: py }];
-          const fsegs = 2 + Math.round(Math.random() * 4);
+          const fsegs = 2 + (Math.random() * 3 | 0);
           for (let k = 0; k < fsegs; k++) {
-            const fstep = R * (0.08 + Math.random() * 0.1);
+            const fstep = R * (0.09 + Math.random() * 0.1);
             fa += (Math.random() - 0.5) * 0.4;
             fx += Math.cos(fa) * fstep; fy += Math.sin(fa) * fstep;
             const fd = Math.hypot(fx, fy);
             if (fd > R * 0.97) { const kk = (R * 0.97) / fd; fx *= kk; fy *= kk; }
             fpts.push({ x: fx, y: fy });
           }
-          crack.fork.push({ pts: fpts, grow: 0 });
+          crack.fork.push({ pts: fpts, fr: 0.35 + Math.random() * 0.5 }); // fork starts mid-parent
         }
       }
       o.cracks.push(crack);
     }
+    // stagger reveal: 2 cracks almost instant (so the first press visibly
+    // bites), the rest fan out up to ~0.9 of the gauge.
+    o.cracks.sort(() => Math.random() - 0.5);
+    o.cracks.forEach((cr, i) => {
+      cr.revealAt = i < 2 ? 0.015 : (i / o.cracks.length) * 0.88;
+      cr.span = 0.1 + Math.random() * 0.14;
+    });
   }
 
   // ----- Shard shape ---------------------------------------------------------
@@ -531,17 +540,17 @@
     return shards;
   }
 
-  function shatter(energy) {
-    const o = state.obj;
-    if (!o) return;
+  // Visual-only burst — shards, dust, shockwave, flash, sound. No scoring,
+  // doesn't clear the object (shared by real shatter + the attract demo).
+  function burst(o) {
     const feverMul = state.fever ? 1.6 : 1;
     const pal = theme.shards;
     o.shatterShape.forEach((sh, idx) => {
       const dist = Math.hypot(sh.cx, sh.cy) || 1;
       const nx = sh.cx / dist, ny = sh.cy / dist;
-      const spd = (180 + Math.random() * 220) * baseScale * (0.7 + energy) * feverMul;
+      const spd = (190 + Math.random() * 230) * baseScale * 1.5 * feverMul;
       state.shards.push({
-        x: cx + sh.cx, y: cy + sh.cy,
+        x: cx + sh.cx * o.r, y: cy + sh.cy * o.r,
         vx: nx * spd + (Math.random() - 0.5) * 60,
         vy: ny * spd - 120 - Math.random() * 90,
         rot: 0, vr: (Math.random() - 0.5) * 9,
@@ -552,8 +561,7 @@
         scale: o.r,
       });
     });
-    // bright core flash + dust chips
-    for (let i = 0; i < 26 + Math.floor(energy * 30); i++) {
+    for (let i = 0; i < 40; i++) {
       const a = Math.random() * Math.PI * 2;
       const s = (90 + Math.random() * 260) * baseScale;
       state.chips.push({
@@ -566,65 +574,54 @@
     }
     state.rings.push({ r: o.r * 0.4, life: 0.5, max: 0.5 });
     state.flash = 1;
-    state.shake = 14 * baseScale * (0.6 + energy);
+    state.shake = 16 * baseScale * feverMul;
+    audio.shatter(1, state.fever);
+  }
 
-    // scoring + combo
+  // Small crackle as the next branch reveals — keeps the build tactile and
+  // signals "you're making progress" without any text.
+  function crackle(o, gauge) {
+    audio.crackle(gauge);
+    const ang = Math.random() * Math.PI * 2;
+    for (let i = 0; i < 4; i++) {
+      const a = ang + (Math.random() - 0.5);
+      const s = (40 + Math.random() * 110) * baseScale;
+      state.chips.push({
+        x: cx + Math.cos(ang) * o.r * 0.5,
+        y: cy + Math.sin(ang) * o.r * 0.5,
+        vx: Math.cos(a) * s, vy: Math.sin(a) * s - 20,
+        life: 0.3 + Math.random() * 0.3, max: 1,
+        size: (1 + Math.random() * 1.8) * baseScale,
+        color: theme.molten ? theme.core : theme.edge,
+      });
+    }
+    state.shake = Math.max(state.shake, 2.5 * baseScale + gauge * 5 * baseScale);
+  }
+
+  function doShatter() {
+    const o = state.obj;
+    if (!o) return;
+    burst(o);
     state.cracked++;
     const now = state.elapsed;
     if (now - state.lastShatterT <= COMBO_WINDOW) state.combo++;
     else state.combo = 1;
     state.lastShatterT = now;
     if (state.combo > state.peakCombo) state.peakCombo = state.combo;
-    const gain = 10 + Math.round(energy * 10) + (state.combo - 1) * 5;
-    state.score += gain;
+    state.score += 10 + (state.combo - 1) * 5;
 
     if (state.combo >= FEVER_COMBO && !state.fever) {
       state.fever = true;
       audio.feverIn();
       feverEl.classList.add('show');
     }
-    audio.shatter(energy, state.fever);
     if (state.combo >= 2) audio.combo(state.combo);
 
     updateHUD();
     if (window.CT_LB) window.CT_LB.submit(state.score, false);
 
     state.obj = null;
-    state._respawnAt = now + 0.42;
-  }
-
-  function strike() {
-    const o = state.obj;
-    if (!o) return;
-    const energy = Math.max(0.16, state.charge);
-    const ang = Math.random() * Math.PI * 2;
-    addCracks(energy, ang);
-    o.damage += energy * 0.95 + 0.05;
-    audio.strike(energy);
-    state.shake = Math.max(state.shake, 5 * baseScale + energy * 9 * baseScale);
-    state.flash = Math.max(state.flash, 0.35 + energy * 0.4);
-    for (let i = 0; i < 8 + Math.floor(energy * 14); i++) {
-      const a = Math.random() * Math.PI * 2;
-      const s = (60 + Math.random() * 180) * baseScale;
-      state.chips.push({
-        x: cx + Math.cos(ang) * o.r * 0.3,
-        y: cy + Math.sin(ang) * o.r * 0.3,
-        vx: Math.cos(a) * s, vy: Math.sin(a) * s - 30,
-        life: 0.35 + Math.random() * 0.4, max: 1,
-        size: (1.2 + Math.random() * 2) * baseScale,
-        color: theme.crack,
-      });
-    }
-    if (o.damage >= o.toughness) {
-      shatter(energy);
-    } else {
-      // partial: combo broken if we dwell too long without a shatter
-      if (state.elapsed - state.lastShatterT > COMBO_WINDOW && state.combo > 0) {
-        state.combo = 0;
-        if (state.fever) { state.fever = false; feverEl.classList.remove('show'); }
-        updateHUD();
-      }
-    }
+    state._respawnAt = now + 0.4;
   }
 
   function updateHUD() {
@@ -645,10 +642,7 @@
       audio.unlock();
       hintEl.classList.add('hidden');
     }
-    if (!state.obj) return;
     state.holding = true;
-    state.chargeStart = state.elapsed;
-    state.charge = 0;
     audio.chargeStart();
     try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
   }
@@ -656,7 +650,6 @@
     if (!state.holding) return;
     state.holding = false;
     audio.chargeEnd();
-    strike();
     try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
   }
   canvas.addEventListener('pointerdown', onDown);
@@ -789,20 +782,21 @@
       ns.start(t);
     }
 
-    function strike(energy) {
+    // crackle: a short dry tick as a new fissure opens; pitch climbs with the
+    // gauge so the build audibly tightens toward the break.
+    function crackle(gauge) {
       if (!unlocked) return;
       const t = ac.currentTime;
-      // sharp transient
-      noise(t, 0.05 + energy * 0.04, 'bandpass', 1600 + energy * 1800, 1.4, 0.12 + energy * 0.12);
-      // body thump
-      const o = ac.createOscillator(); o.type = 'sine';
-      o.frequency.setValueAtTime(180, t);
-      o.frequency.exponentialRampToValueAtTime(60, t + 0.12);
+      noise(t, 0.035, 'bandpass', 1400 + gauge * 3200, 2.2, 0.06 + gauge * 0.07);
+      const o = ac.createOscillator(); o.type = 'triangle';
+      const f = (theme.root * 0.5) * (1 + gauge * 2.2);
+      o.frequency.setValueAtTime(f, t);
+      o.frequency.exponentialRampToValueAtTime(f * 0.6, t + 0.07);
       const g = ac.createGain();
-      g.gain.setValueAtTime(0.12 + energy * 0.1, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      g.gain.setValueAtTime(0.05 + gauge * 0.05, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
       o.connect(g); g.connect(fxGain);
-      o.start(t); o.stop(t + 0.2);
+      o.start(t); o.stop(t + 0.1);
     }
 
     // theme-flavoured shatter: crystal = bright pings, ceramic = mid clacks,
@@ -878,33 +872,34 @@
       o.start(t); o.stop(t + 0.65);
     }
 
-    return { unlock, chargeStart, chargeEnd, setChargeFreq, strike, shatter,
+    return { unlock, chargeStart, chargeEnd, setChargeFreq, crackle, shatter,
              combo, feverIn, onThemeChange };
   })();
 
   // ----- Demo (loops until first touch; preload-safe, RAF-bounded) -----------
   // Aigram preloads games, so a single-shot intro would be over before the
   // player lands here. Loop a ghost press→release on the idle object.
-  const demo = { active: true, t: 0, phase: 0 };
+  // Attract loop: a ghost finger presses & holds, the ring fills, cracks
+  // spider out, the orb bursts — the whole mechanic, on repeat, no scoring.
+  const demo = { active: true, t: 0, charge: 0, fired: false };
   function updateDemo(dt) {
     if (interacted) { demo.active = false; return; }
+    if (!state.obj) { demo.charge = 0; return; }   // waiting on respawn
     demo.t += dt;
-    const CYCLE = 3.6;
+    const CYCLE = 3.8;
     const p = (demo.t % CYCLE) / CYCLE;
-    if (p < 0.55) {                     // pressing / charging
-      demo.charge = p / 0.55;
-      demo.released = false;
-    } else if (p < 0.62) {              // release → crack flash
-      if (!demo.released && state.obj) {
-        demo.released = true;
-        addCracks(0.55, Math.random() * Math.PI * 2);
-        state.flash = 0.4;
-      }
-      demo.charge = 0;
-    } else {
-      demo.charge = 0;
+    if (p < 0.06) demo.fired = false;
+    const o = state.obj;
+    const g = p < 0.68 ? p / 0.68 : 1;             // press-and-hold to full
+    o.damage = Math.min(o.toughness, g * o.toughness);
+    demo.charge = g;
+    if (g >= 1 && !demo.fired) {
+      demo.fired = true;
+      burst(o);
+      state.obj = null;
+      state._respawnAt = state.elapsed + 0.45;
+      demo.t = 0;            // resync so the next orb starts a fresh fill
     }
-    if (state.obj && state.obj.cracks.length > 14) state.obj.cracks.length = 0;
   }
 
   // Material `touch_app` icon (same glyph Murmuration uses) for the demo hand.
@@ -945,12 +940,13 @@
     if (!o) return;
     const age = Math.min(1, (state.elapsed - o.spawnT) / 0.32);
     const ease = 1 - Math.pow(1 - age, 3);
-    const charging = state.holding;
-    const c = charging ? state.charge : (demo.active ? (demo.charge || 0) : 0);
-    // jitter while charging
-    const jx = charging ? (Math.random() - 0.5) * c * 9 * baseScale : 0;
-    const jy = charging ? (Math.random() - 0.5) * c * 9 * baseScale : 0;
-    const R = o.r * (0.4 + 0.6 * ease) * (1 + c * 0.04);
+    const c = Math.min(1, o.damage / o.toughness);   // integrity gauge 0..1
+    const stressed = state.holding || (demo.active && c > 0.01);
+    // trembles harder the closer it is to breaking
+    const jit = stressed ? (0.4 + c) : 0;
+    const jx = (Math.random() - 0.5) * jit * 9 * baseScale;
+    const jy = (Math.random() - 0.5) * jit * 9 * baseScale;
+    const R = o.r * (0.4 + 0.6 * ease) * (1 + c * 0.05);
 
     // contact shadow on the ground (world space, doesn't follow charge jitter)
     ctx.save();
@@ -1015,13 +1011,15 @@
     // cracks — lit fissures (molten for geode)
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
-    const dmgGlow = Math.min(1, o.damage / o.toughness);
+    const dmgGlow = c;
     for (const cr of o.cracks) {
-      cr.grow = Math.min(1, cr.grow + 0.14);
-      drawCrack(cr.pts, cr.grow, k, 1, dmgGlow);
+      const g = (c - cr.revealAt) / cr.span;
+      if (g <= 0) continue;
+      const grow = g >= 1 ? 1 : g;
+      drawCrack(cr.pts, grow, k, 1, dmgGlow);
       for (const f of cr.fork) {
-        f.grow = Math.min(1, f.grow + 0.12);
-        drawCrack(f.pts, f.grow, k, 0.62, dmgGlow);
+        const fg = (grow - f.fr) / (1 - f.fr);
+        if (fg > 0) drawCrack(f.pts, fg >= 1 ? 1 : fg, k, 0.62, dmgGlow);
       }
     }
     ctx.restore(); // unclip
@@ -1052,6 +1050,65 @@
     ctx.globalAlpha = 1;
 
     ctx.restore();
+  }
+
+  function hx2rgb(h) {
+    return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  }
+  function mix(a, b, t) {
+    const A = hx2rgb(a), B = hx2rgb(b);
+    return `rgb(${A[0] + (B[0] - A[0]) * t | 0},${A[1] + (B[1] - A[1]) * t | 0},${A[2] + (B[2] - A[2]) * t | 0})`;
+  }
+
+  // Integrity ring around the orb — fills as you press. Full circle = shatter.
+  // This is the single visual that makes the mechanic readable at a glance.
+  function drawGauge() {
+    const o = state.obj;
+    if (!o) return;
+    const age = Math.min(1, (state.elapsed - o.spawnT) / 0.32);
+    const ease = 1 - Math.pow(1 - age, 3);
+    const c = Math.min(1, o.damage / o.toughness);
+    const R = o.r * (0.4 + 0.6 * ease) * (1 + c * 0.05);
+    const rr = R * 1.2;
+    const start = -Math.PI / 2;
+    const near = c > 0.82;
+    const pulse = near ? 0.7 + Math.sin(state.elapsed * 16) * 0.3 : 1;
+
+    // faint full track
+    ctx.beginPath();
+    ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+    ctx.strokeStyle = theme.rim;
+    ctx.globalAlpha = 0.14;
+    ctx.lineWidth = 3 * baseScale;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    if (c <= 0.001) return;
+    const col = mix(theme.rim, theme.core, Math.pow(c, 0.7));
+    ctx.beginPath();
+    ctx.arc(cx, cy, rr, start, start + c * Math.PI * 2);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 4.5 * baseScale;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = pulse;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = (6 + c * 16) * baseScale;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+
+    // leading head
+    const ha = start + c * Math.PI * 2;
+    const hxp = cx + Math.cos(ha) * rr, hyp = cy + Math.sin(ha) * rr;
+    ctx.beginPath();
+    ctx.arc(hxp, hyp, (3.5 + c * 2.5) * baseScale, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 12 * baseScale;
+    ctx.globalAlpha = pulse;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
   }
 
   function drawTexture(tex, R) {
@@ -1232,9 +1289,20 @@
 
     if (demo.active) updateDemo(dt);
 
-    if (state.holding) {
-      state.charge = Math.min(1, (state.elapsed - state.chargeStart) / CHARGE_TIME);
-      audio.setChargeFreq(state.charge);
+    // Press & hold stresses the object: integrity drains, cracks spider out,
+    // the ring fills. Reaching full = shatter (auto, no release needed).
+    const o = state.obj;
+    if (o && state.holding) {
+      const prev = o.lastGauge;
+      o.damage = Math.min(o.toughness, o.damage + dt * FILL_RATE * o.fillMul);
+      const g = o.damage / o.toughness;
+      audio.setChargeFreq(g);
+      // crackle each time a new branch crosses its reveal point
+      for (const cr of o.cracks) {
+        if (cr.revealAt > prev && cr.revealAt <= g) { crackle(o, g); break; }
+      }
+      o.lastGauge = g;
+      if (o.damage >= o.toughness) doShatter();
     }
 
     if (!state.obj && state._respawnAt != null && state.elapsed >= state._respawnAt) {
@@ -1295,6 +1363,7 @@
     }
     drawRings();
     drawObject();
+    drawGauge();
     drawShards();
     drawChips();
     drawDemoHand();
