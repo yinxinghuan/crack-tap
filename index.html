@@ -1,0 +1,1266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="icon" type="image/gif" href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" />
+<title>Crack Tap</title>
+<style>
+  :root { --bg: #060713; --accent: #9b6bff; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: var(--bg);
+    color: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    overflow: hidden; user-select: none; touch-action: none;
+    overscroll-behavior: none;
+  }
+  body { overflow: hidden; position: relative; }
+  #stage {
+    position: absolute; inset: 0; display: block;
+    width: 100%; height: 100%; background: var(--bg);
+  }
+  .hud {
+    position: absolute; left: 0; right: 0; top: 0;
+    text-align: center; pointer-events: none;
+    padding-top: env(safe-area-inset-top);
+  }
+  .hud .label {
+    margin-top: 22px; font-size: 20px; letter-spacing: 0.22em;
+    color: var(--accent); text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(155,107,255,0.55);
+    transition: color 0.4s ease, text-shadow 0.4s ease;
+  }
+  .hud .counter {
+    margin-top: 4px; font-size: 56px; font-weight: 700; line-height: 1;
+    color: #fff; letter-spacing: 0.02em;
+    text-shadow: 0 0 18px rgba(255,255,255,0.55), 0 0 38px rgba(155,107,255,0.35);
+    font-variant-numeric: tabular-nums;
+  }
+  .hud .combo {
+    margin-top: 8px; font-size: 18px; font-weight: 800;
+    letter-spacing: 0.16em; color: #ffd36b;
+    text-shadow: 0 0 12px rgba(255,211,107,0.6);
+    opacity: 0; transition: opacity 0.25s ease;
+  }
+  .hud .combo.show { opacity: 1; }
+  .hud .hint {
+    margin-top: 16px; font-size: 13px; letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.42);
+    animation: ct-pulse 2.4s ease-in-out infinite;
+  }
+  .hud .hint.hidden { opacity: 0; animation: none; transition: opacity 0.6s ease; }
+  .hud .fever {
+    display: none;
+    margin-top: 14px; font-size: 22px; font-weight: 900;
+    color: #ff5a2b; letter-spacing: 0.24em;
+    text-shadow: 0 0 10px #ff5a2b, 0 0 22px rgba(255, 90, 43, 0.7);
+    animation: ct-pulse 0.8s ease-in-out infinite;
+  }
+  .hud .fever.show { display: block; }
+  @keyframes ct-pulse {
+    0%, 100% { opacity: 0.5; }
+    50%      { opacity: 1; }
+  }
+  .theme-dots {
+    position: absolute; right: 14px; top: 14px;
+    display: flex; gap: 8px; padding: 8px;
+    pointer-events: auto;
+    padding-top: calc(8px + env(safe-area-inset-top));
+    z-index: 10;
+  }
+  .theme-dots .dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    cursor: pointer; opacity: 0.5;
+    transition: transform 0.18s ease, opacity 0.18s ease;
+    box-shadow: 0 0 8px currentColor;
+  }
+  .theme-dots .dot.active { opacity: 1; transform: scale(1.18); }
+  .theme-dots .dot[data-t="crystal"] { background: #9b6bff; color: #9b6bff; }
+  .theme-dots .dot[data-t="ceramic"] { background: #e9a06b; color: #e9a06b; }
+  .theme-dots .dot[data-t="geode"]   { background: #ff7a2b; color: #ff7a2b; }
+  .credits {
+    position: absolute; left: 0; right: 0; bottom: 16px;
+    text-align: center; color: rgba(255,255,255,0.18);
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    pointer-events: none; padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* leaderboard icon button (reused: HUD + win overlay) */
+  .lb-icon-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(155,107,255,0.35);
+    background: rgba(155,107,255,0.08); color: var(--accent);
+    font-size: 18px; line-height: 1; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 12px rgba(155,107,255,0.25);
+    transition: background 0.15s, transform 0.08s;
+  }
+  .lb-icon-btn:active { background: rgba(155,107,255,0.2); transform: scale(0.9); }
+  .lb-hud {
+    position: absolute; left: 14px; top: 14px;
+    padding-top: calc(env(safe-area-inset-top));
+    z-index: 10;
+  }
+
+  /* leaderboard overlay */
+  #lb-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  #lb-overlay.show { opacity: 1; pointer-events: all; }
+  #lb-panel {
+    width: 100%; max-width: 360px; max-height: 82vh;
+    display: flex; flex-direction: column;
+    border-radius: 20px;
+    background: linear-gradient(160deg, rgba(20,16,40,0.98) 0%, rgba(8,6,18,0.98) 100%);
+    border: 1px solid rgba(155,107,255,0.18);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 30px rgba(155,107,255,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+    overflow: hidden;
+    animation: lb-enter 0.32s cubic-bezier(0.34,1.4,0.64,1) both;
+    font-family: inherit;
+  }
+  #lb-overlay:not(.show) #lb-panel { animation: none; }
+  .lb-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 18px 14px;
+    border-bottom: 1px solid rgba(155,107,255,0.1);
+    flex-shrink: 0;
+  }
+  .lb-hdr-left { display: flex; align-items: center; gap: 10px; }
+  .lb-hdr-icon { font-size: 22px; filter: drop-shadow(0 0 10px rgba(155,107,255,0.6)); }
+  .lb-hdr-title {
+    font-size: 14px; font-weight: 700; color: var(--accent);
+    letter-spacing: 0.22em; text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(155,107,255,0.45);
+  }
+  .lb-hdr-game { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 2px; letter-spacing: 0.14em; }
+  .lb-close {
+    width: 30px; height: 30px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.55);
+    font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .lb-close:active { background: rgba(255,255,255,0.18); transform: scale(0.9); }
+  .lb-tabs { display: flex; gap: 6px; padding: 12px 14px 0; flex-shrink: 0; }
+  .lb-tab {
+    flex: 1; padding: 9px 8px; border: 1px solid transparent; border-radius: 10px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5);
+    font-family: inherit; letter-spacing: 0.16em; text-transform: uppercase;
+    -webkit-tap-highlight-color: transparent; transition: background 0.2s, color 0.2s;
+  }
+  .lb-tab.active {
+    background: linear-gradient(135deg, rgba(155,107,255,0.18), rgba(120,90,255,0.1));
+    color: var(--accent); border-color: rgba(155,107,255,0.28);
+  }
+  .lb-body { flex: 1; overflow-y: auto; padding: 10px 12px 16px; -webkit-overflow-scrolling: touch; }
+  .lb-body::-webkit-scrollbar { display: none; }
+  .lb-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px; padding: 40px 20px;
+  }
+  .lb-state-icon { font-size: 32px; }
+  .lb-state-text { font-size: 13px; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.5; letter-spacing: 0.08em; }
+  .lb-spinner {
+    display: block; width: 26px; height: 26px; border-radius: 50%;
+    border: 3px solid rgba(155,107,255,0.15); border-top-color: var(--accent);
+    animation: lb-spin 0.8s linear infinite;
+  }
+  .lb-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 12px; margin-bottom: 4px;
+    background: rgba(255,255,255,0.035);
+  }
+  .lb-row.top { background: rgba(155,107,255,0.06); border: 1px solid rgba(155,107,255,0.1); }
+  .lb-row.me  { background: rgba(155,107,255,0.12); border: 1px solid rgba(155,107,255,0.35); }
+  .lb-row.clickable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .lb-row.clickable:active { background: rgba(155,107,255,0.16); transform: scale(0.98); }
+  .lb-rank { width: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .lb-medal { font-size: 20px; line-height: 1; }
+  .lb-num { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.35); font-variant-numeric: tabular-nums; }
+  .lb-avatar {
+    border-radius: 50%; overflow: hidden; flex-shrink: 0;
+    background: linear-gradient(135deg, #221a3a, #100a1e);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: var(--accent);
+    border: 1.5px solid rgba(155,107,255,0.25);
+  }
+  .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .lb-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; overflow: hidden; }
+  .lb-name { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-me-tag {
+    font-size: 10px; font-weight: 700; color: var(--accent);
+    background: rgba(155,107,255,0.14); border-radius: 5px;
+    padding: 1px 6px; flex-shrink: 0; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .lb-score {
+    font-size: 15px; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums; flex-shrink: 0;
+    text-shadow: 0 0 10px rgba(155,107,255,0.35);
+  }
+  @keyframes lb-enter {
+    from { opacity: 0; transform: translateY(20px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes lb-spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+
+  <div class="hud">
+    <div class="label" id="label">Cracked</div>
+    <div class="counter" id="counter">0</div>
+    <div class="combo" id="combo">COMBO ×1</div>
+    <div class="hint" id="hint">Press &amp; hold — release to crack</div>
+    <div class="fever" id="fever">FEVER!</div>
+  </div>
+
+  <div class="lb-hud">
+    <button class="lb-icon-btn" id="hudLbBtn" aria-label="Leaderboard">🏆</button>
+  </div>
+
+  <div id="lb-overlay">
+    <div id="lb-panel">
+      <div class="lb-hdr">
+        <div class="lb-hdr-left">
+          <span class="lb-hdr-icon">🏆</span>
+          <div>
+            <div class="lb-hdr-title" id="lb-title-text">Leaderboard</div>
+            <div class="lb-hdr-game">Crack Tap</div>
+          </div>
+        </div>
+        <button class="lb-close" id="lb-close-btn">✕</button>
+      </div>
+      <div class="lb-tabs" id="lb-tabs" style="display:none">
+        <button class="lb-tab active" id="lb-tab-global">🌍 Global</button>
+        <button class="lb-tab" id="lb-tab-friends">👥 Friends</button>
+      </div>
+      <div class="lb-body" id="lb-body">
+        <div class="lb-state"><span class="lb-spinner"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="theme-dots" id="themeDots">
+    <div class="dot active" data-t="crystal"></div>
+    <div class="dot" data-t="ceramic"></div>
+    <div class="dot" data-t="geode"></div>
+  </div>
+
+  <div class="credits">Charge. Release. Shatter.</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ----- Themes --------------------------------------------------------------
+  // Each theme is a material: crystal (amethyst glass), ceramic (terracotta
+  // pot), geode (obsidian shell over a molten core). They drive palette, the
+  // crack glow, shard colors, and the shatter SFX flavour.
+  const THEMES = {
+    crystal: {
+      bg: '#060713', accent: '#9b6bff',
+      objA: '#7d56e8', objB: '#3a2a72', rim: '#c9b3ff',
+      crack: '#eadcff', core: '#b98bff',
+      shards: ['#8c63f0', '#6b47d0', '#a988ff', '#5436a8', '#cdb6ff'],
+      root: 261.63, sfx: 'glass',
+    },
+    ceramic: {
+      bg: '#140d09', accent: '#e9a06b',
+      objA: '#d98a52', objB: '#8a4f2c', rim: '#ffd9b0',
+      crack: '#3a1f10', core: '#ffbf86',
+      shards: ['#d98a52', '#b06736', '#e8a86e', '#8a4f2c', '#f0c89a'],
+      root: 220.00, sfx: 'clay',
+    },
+    geode: {
+      bg: '#0a0705', accent: '#ff7a2b',
+      objA: '#2b2622', objB: '#0e0c0a', rim: '#5a4030',
+      crack: '#ff8a3d', core: '#ffd24a',
+      shards: ['#2b2622', '#1a1714', '#3a322c', '#ff7a2b', '#ffb14a'],
+      root: 196.00, sfx: 'rock',
+    },
+  };
+
+  // ----- DOM + Canvas --------------------------------------------------------
+  const canvas    = document.getElementById('stage');
+  const ctx       = canvas.getContext('2d');
+  const counterEl = document.getElementById('counter');
+  const labelEl   = document.getElementById('label');
+  const comboEl   = document.getElementById('combo');
+  const hintEl    = document.getElementById('hint');
+  const feverEl   = document.getElementById('fever');
+  const dotsEl    = document.getElementById('themeDots');
+
+  let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, baseScale = 1;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width  = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    cx = W / 2; cy = H / 2;
+    baseScale = Math.min(W, H) / 414;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // ----- State ---------------------------------------------------------------
+  let themeName = 'crystal';
+  let theme = THEMES[themeName];
+
+  const CHARGE_TIME = 1.05;          // sec of hold to reach full charge
+  const COMBO_WINDOW = 2.2;          // sec between shatters to keep combo
+  const FEVER_COMBO = 4;             // combo count that triggers fever
+  const SHARD_LIFE = 1.5;
+
+  const state = {
+    cracked: 0,
+    score: 0,
+    combo: 0,
+    peakCombo: 0,
+    lastShatterT: -999,
+    fever: false,
+
+    obj: null,             // current object {r, toughness, damage, cracks[], spawnT, jitterSeed}
+    holding: false,
+    chargeStart: 0,
+    charge: 0,
+    shards: [],            // flying shard polygons
+    chips: [],             // small impact particles
+    rings: [],             // shockwave rings
+    shake: 0,
+    flash: 0,
+    elapsed: 0,
+  };
+
+  function objRadius() { return Math.min(W, H) * 0.205; }
+
+  function spawnObject(now) {
+    state.obj = {
+      r: objRadius(),
+      toughness: 0.5 + Math.random() * 0.4,      // 0.5..0.9 (full charge one-shots)
+      damage: 0,
+      cracks: [],
+      spawnT: now,
+      seed: Math.random() * 1000,
+      shatterShape: makeShardShape(),
+    };
+  }
+
+  // ----- Crack network -------------------------------------------------------
+  // A crack is a list of points growing from an origin. On each strike we seed
+  // branches proportional to the strike energy; they extend over ~0.22s and
+  // recursively fork. Purely visual accumulation — damage is the scalar gate.
+  function addCracks(energy, originAngle) {
+    const o = state.obj;
+    if (!o) return;
+    const R = o.r;
+    const branches = 2 + Math.round(energy * 7);          // 2..9 main branches
+    const baseAng = originAngle != null
+      ? originAngle
+      : Math.random() * Math.PI * 2;
+    const ox = Math.cos(baseAng) * R * (0.15 + Math.random() * 0.25);
+    const oy = Math.sin(baseAng) * R * (0.15 + Math.random() * 0.25);
+    for (let b = 0; b < branches; b++) {
+      const ang = Math.random() * Math.PI * 2;
+      const segs = 3 + Math.round(energy * 5 + Math.random() * 3);
+      const crack = { pts: [{ x: ox, y: oy }], grow: 0, segs, energy, fork: [] };
+      let px = ox, py = oy, a = ang;
+      for (let s = 0; s < segs; s++) {
+        const step = R * (0.16 + Math.random() * 0.16);
+        a += (Math.random() - 0.5) * 1.1;
+        px += Math.cos(a) * step;
+        py += Math.sin(a) * step;
+        const d = Math.hypot(px, py);
+        if (d > R * 0.97) { const k = (R * 0.97) / d; px *= k; py *= k; }
+        crack.pts.push({ x: px, y: py });
+        // occasional fork
+        if (s > 0 && Math.random() < 0.35) {
+          let fx = px, fy = py, fa = a + (Math.random() - 0.5) * 2.2;
+          const fpts = [{ x: px, y: py }];
+          const fsegs = 2 + Math.round(Math.random() * 3);
+          for (let k = 0; k < fsegs; k++) {
+            const fstep = R * (0.12 + Math.random() * 0.12);
+            fa += (Math.random() - 0.5) * 1.2;
+            fx += Math.cos(fa) * fstep; fy += Math.sin(fa) * fstep;
+            const fd = Math.hypot(fx, fy);
+            if (fd > R * 0.97) { const kk = (R * 0.97) / fd; fx *= kk; fy *= kk; }
+            fpts.push({ x: fx, y: fy });
+          }
+          crack.fork.push({ pts: fpts, grow: 0 });
+        }
+      }
+      o.cracks.push(crack);
+    }
+  }
+
+  // ----- Shard shape ---------------------------------------------------------
+  // Pre-cut the disc into jagged sectors × 2 rings so a shatter looks like a
+  // genuine fracture rather than a particle puff. Each shard is a polygon
+  // (local coords) + its centroid offset for launch direction.
+  function makeShardShape() {
+    const sectors = 9 + Math.floor(Math.random() * 4);   // 9..12
+    const midR = 0.46 + Math.random() * 0.1;
+    const angs = [];
+    for (let i = 0; i < sectors; i++) {
+      angs.push(i / sectors * Math.PI * 2 + (Math.random() - 0.5) * 0.4);
+    }
+    angs.push(angs[0] + Math.PI * 2);
+    const ring = (i, rr) => {
+      const a = angs[i];
+      const jr = rr * (0.86 + Math.random() * 0.22);
+      return { x: Math.cos(a) * jr, y: Math.sin(a) * jr };
+    };
+    const outer = [], mid = [];
+    for (let i = 0; i <= sectors; i++) { outer.push(ring(i, 1)); mid.push(ring(i, midR)); }
+    const shards = [];
+    // inner core polygon
+    const core = [];
+    for (let i = 0; i < sectors; i++) core.push(mid[i]);
+    shards.push(core);
+    // outer ring trapezoids
+    for (let i = 0; i < sectors; i++) {
+      shards.push([ mid[i], outer[i], outer[i + 1], mid[i + 1] ]);
+    }
+    return shards.map(poly => {
+      let cxp = 0, cyp = 0;
+      poly.forEach(p => { cxp += p.x; cyp += p.y; });
+      cxp /= poly.length; cyp /= poly.length;
+      return { verts: poly.map(p => ({ x: p.x - cxp, y: p.y - cyp })), cx: cxp, cy: cyp };
+    });
+  }
+
+  function shatter(energy) {
+    const o = state.obj;
+    if (!o) return;
+    const feverMul = state.fever ? 1.6 : 1;
+    const pal = theme.shards;
+    o.shatterShape.forEach((sh, idx) => {
+      const dist = Math.hypot(sh.cx, sh.cy) || 1;
+      const nx = sh.cx / dist, ny = sh.cy / dist;
+      const spd = (180 + Math.random() * 220) * baseScale * (0.7 + energy) * feverMul;
+      state.shards.push({
+        x: cx + sh.cx, y: cy + sh.cy,
+        vx: nx * spd + (Math.random() - 0.5) * 60,
+        vy: ny * spd - 120 - Math.random() * 90,
+        rot: 0, vr: (Math.random() - 0.5) * 9,
+        verts: sh.verts,
+        color: pal[idx % pal.length],
+        life: SHARD_LIFE, max: SHARD_LIFE,
+        scale: o.r,
+      });
+    });
+    // bright core flash + dust chips
+    for (let i = 0; i < 26 + Math.floor(energy * 30); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = (90 + Math.random() * 260) * baseScale;
+      state.chips.push({
+        x: cx, y: cy,
+        vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40,
+        life: 0.5 + Math.random() * 0.5, max: 1,
+        size: (1.5 + Math.random() * 2.5) * baseScale,
+        color: Math.random() < 0.3 ? theme.core : pal[(Math.random() * pal.length) | 0],
+      });
+    }
+    state.rings.push({ r: o.r * 0.4, life: 0.5, max: 0.5 });
+    state.flash = 1;
+    state.shake = 14 * baseScale * (0.6 + energy);
+
+    // scoring + combo
+    state.cracked++;
+    const now = state.elapsed;
+    if (now - state.lastShatterT <= COMBO_WINDOW) state.combo++;
+    else state.combo = 1;
+    state.lastShatterT = now;
+    if (state.combo > state.peakCombo) state.peakCombo = state.combo;
+    const gain = 10 + Math.round(energy * 10) + (state.combo - 1) * 5;
+    state.score += gain;
+
+    if (state.combo >= FEVER_COMBO && !state.fever) {
+      state.fever = true;
+      audio.feverIn();
+      feverEl.classList.add('show');
+    }
+    audio.shatter(energy, state.fever);
+    if (state.combo >= 2) audio.combo(state.combo);
+
+    updateHUD();
+    if (window.CT_LB) window.CT_LB.submit(state.score, false);
+
+    state.obj = null;
+    state._respawnAt = now + 0.42;
+  }
+
+  function strike() {
+    const o = state.obj;
+    if (!o) return;
+    const energy = Math.max(0.16, state.charge);
+    const ang = Math.random() * Math.PI * 2;
+    addCracks(energy, ang);
+    o.damage += energy * 0.95 + 0.05;
+    audio.strike(energy);
+    state.shake = Math.max(state.shake, 5 * baseScale + energy * 9 * baseScale);
+    state.flash = Math.max(state.flash, 0.35 + energy * 0.4);
+    for (let i = 0; i < 8 + Math.floor(energy * 14); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = (60 + Math.random() * 180) * baseScale;
+      state.chips.push({
+        x: cx + Math.cos(ang) * o.r * 0.3,
+        y: cy + Math.sin(ang) * o.r * 0.3,
+        vx: Math.cos(a) * s, vy: Math.sin(a) * s - 30,
+        life: 0.35 + Math.random() * 0.4, max: 1,
+        size: (1.2 + Math.random() * 2) * baseScale,
+        color: theme.crack,
+      });
+    }
+    if (o.damage >= o.toughness) {
+      shatter(energy);
+    } else {
+      // partial: combo broken if we dwell too long without a shatter
+      if (state.elapsed - state.lastShatterT > COMBO_WINDOW && state.combo > 0) {
+        state.combo = 0;
+        if (state.fever) { state.fever = false; feverEl.classList.remove('show'); }
+        updateHUD();
+      }
+    }
+  }
+
+  function updateHUD() {
+    counterEl.textContent = state.cracked.toLocaleString('en-US');
+    if (state.combo >= 2) {
+      comboEl.textContent = 'COMBO ×' + state.combo;
+      comboEl.classList.add('show');
+    } else {
+      comboEl.classList.remove('show');
+    }
+  }
+
+  // ----- Input ---------------------------------------------------------------
+  let interacted = false;
+  function onDown(e) {
+    if (!interacted) {
+      interacted = true;
+      audio.unlock();
+      hintEl.classList.add('hidden');
+    }
+    if (!state.obj) return;
+    state.holding = true;
+    state.chargeStart = state.elapsed;
+    state.charge = 0;
+    audio.chargeStart();
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+  function onUp(e) {
+    if (!state.holding) return;
+    state.holding = false;
+    audio.chargeEnd();
+    strike();
+    try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+  canvas.addEventListener('pointerdown', onDown);
+  canvas.addEventListener('pointerup', onUp);
+  canvas.addEventListener('pointercancel', onUp);
+
+  dotsEl.addEventListener('pointerdown', (e) => {
+    const t = e.target.closest('.dot');
+    if (!t) return;
+    const name = t.dataset.t;
+    if (!THEMES[name] || name === themeName) return;
+    themeName = name;
+    theme = THEMES[name];
+    applyTheme();
+    audio.onThemeChange();
+  });
+
+  function applyTheme() {
+    document.body.style.background = theme.bg;
+    document.documentElement.style.setProperty('--bg', theme.bg);
+    document.documentElement.style.setProperty('--accent', theme.accent);
+    [...dotsEl.children].forEach(d => d.classList.toggle('active', d.dataset.t === themeName));
+  }
+
+  // ----- Audio ---------------------------------------------------------------
+  // Breathing ambient pad (rise / hold / fall / silence, looped with random
+  // peak — per project rule, no continuous drone) + event SFX: charge tone,
+  // strike click, theme-flavoured shatter, combo blast, fever riser.
+  const audio = (() => {
+    let ac = null, master, ambGain, fxGain;
+    let unlocked = false, ambTimer = 0;
+    let chargeOsc = null, chargeGain = null;
+
+    function ensure() {
+      if (ac) return ac;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ac = new AC();
+      master = ac.createGain(); master.gain.value = 0.8; master.connect(ac.destination);
+      ambGain = ac.createGain(); ambGain.gain.value = 0; ambGain.connect(master);
+      fxGain = ac.createGain(); fxGain.gain.value = 1; fxGain.connect(master);
+      return ac;
+    }
+    function unlock() {
+      if (unlocked) return;
+      if (!ensure()) return;
+      if (ac.state !== 'running') ac.resume();
+      unlocked = true;
+      scheduleAmbient(0.6);
+    }
+    // One breath: rise 5-8s / hold 8-16s / fall 6-10s / silence 7-16s.
+    function scheduleAmbient(delay) {
+      if (!unlocked) return;
+      ambTimer = setTimeout(() => {
+        if (!unlocked) return;
+        const t = ac.currentTime;
+        const rise = 5 + Math.random() * 3;
+        const hold = 8 + Math.random() * 8;
+        const fall = 6 + Math.random() * 4;
+        const sil  = 7 + Math.random() * 9;
+        const peak = 0.10 + Math.random() * 0.06;
+        const r = theme.root * 0.5;
+        const voices = [r, r * 1.5, r * 2, r * 2.9963];
+        const oscs = voices.map((f, i) => {
+          const o = ac.createOscillator();
+          o.type = i < 2 ? 'sine' : 'triangle';
+          o.frequency.value = f * (1 + (Math.random() - 0.5) * 0.004);
+          const g = ac.createGain(); g.gain.value = 0;
+          const lp = ac.createBiquadFilter(); lp.type = 'lowpass';
+          lp.frequency.value = 700 + i * 250;
+          o.connect(lp); lp.connect(g); g.connect(ambGain);
+          const vp = peak * (1 - i * 0.18);
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(vp, t + rise);
+          g.gain.setValueAtTime(vp, t + rise + hold);
+          g.gain.linearRampToValueAtTime(0, t + rise + hold + fall);
+          o.start(t); o.stop(t + rise + hold + fall + 0.1);
+          return o;
+        });
+        ambGain.gain.setValueAtTime(1, t);
+        scheduleAmbient((rise + hold + fall + sil) * 1000);
+      }, delay * 1000);
+    }
+    function onThemeChange() { /* next breath picks up new root automatically */ }
+
+    function chargeStart() {
+      if (!unlocked) return;
+      stopCharge();
+      const t = ac.currentTime;
+      chargeOsc = ac.createOscillator(); chargeOsc.type = 'sawtooth';
+      chargeOsc.frequency.setValueAtTime(theme.root * 0.5, t);
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(300, t);
+      lp.frequency.linearRampToValueAtTime(2400, t + CHARGE_TIME);
+      chargeGain = ac.createGain(); chargeGain.gain.setValueAtTime(0.0001, t);
+      chargeGain.gain.linearRampToValueAtTime(0.16, t + CHARGE_TIME * 0.9);
+      chargeOsc.connect(lp); lp.connect(chargeGain); chargeGain.connect(fxGain);
+      chargeOsc.start(t);
+    }
+    function setChargeFreq(c) {
+      if (!chargeOsc || !ac) return;
+      const f = theme.root * 0.5 * (1 + c * 2.4);
+      chargeOsc.frequency.setTargetAtTime(f, ac.currentTime, 0.05);
+    }
+    function stopCharge() {
+      if (!chargeOsc) return;
+      const t = ac.currentTime;
+      try {
+        chargeGain.gain.cancelScheduledValues(t);
+        chargeGain.gain.setValueAtTime(chargeGain.gain.value, t);
+        chargeGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+        chargeOsc.stop(t + 0.1);
+      } catch (_) {}
+      chargeOsc = null; chargeGain = null;
+    }
+    function chargeEnd() { stopCharge(); }
+
+    function noise(t, dur, type, freq, q, vel, dest) {
+      const len = Math.max(1, Math.floor(ac.sampleRate * dur));
+      const buf = ac.createBuffer(1, len, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() - 0.5) * 2 * (1 - i / len);
+      const ns = ac.createBufferSource(); ns.buffer = buf;
+      const f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q) f.Q.value = q;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(vel, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      ns.connect(f); f.connect(g); g.connect(dest || fxGain);
+      ns.start(t);
+    }
+
+    function strike(energy) {
+      if (!unlocked) return;
+      const t = ac.currentTime;
+      // sharp transient
+      noise(t, 0.05 + energy * 0.04, 'bandpass', 1600 + energy * 1800, 1.4, 0.12 + energy * 0.12);
+      // body thump
+      const o = ac.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(180, t);
+      o.frequency.exponentialRampToValueAtTime(60, t + 0.12);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.12 + energy * 0.1, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      o.connect(g); g.connect(fxGain);
+      o.start(t); o.stop(t + 0.2);
+    }
+
+    // theme-flavoured shatter: crystal = bright pings, ceramic = mid clacks,
+    // rock = low rumble + grit. Intensity scales shard count + tail.
+    function shatter(energy, fever) {
+      if (!unlocked) return;
+      const t = ac.currentTime;
+      const flavour = theme.sfx;
+      const inten = 0.7 + energy + (fever ? 0.5 : 0);
+      const shards = 6 + Math.floor(inten * 7);
+      const band = flavour === 'glass' ? [2600, 7400]
+                 : flavour === 'clay'  ? [900, 2400]
+                 : [320, 1200];
+      for (let i = 0; i < shards; i++) {
+        const dl = Math.random() * 0.14;
+        const bf = band[0] + Math.random() * (band[1] - band[0]);
+        const o = ac.createOscillator();
+        o.type = flavour === 'glass' ? (i % 2 ? 'sine' : 'triangle')
+               : flavour === 'clay'  ? 'triangle' : 'square';
+        o.frequency.setValueAtTime(bf, t + dl);
+        o.frequency.exponentialRampToValueAtTime(bf * 0.4, t + dl + (flavour === 'rock' ? 0.3 : 0.16));
+        const g = ac.createGain();
+        const pk = (0.04 + Math.random() * 0.035) * inten;
+        g.gain.setValueAtTime(0, t + dl);
+        g.gain.linearRampToValueAtTime(pk, t + dl + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dl + (flavour === 'rock' ? 0.34 : 0.2));
+        o.connect(g); g.connect(fxGain);
+        o.start(t + dl); o.stop(t + dl + 0.4);
+      }
+      // crunch sweep
+      const sweepF = flavour === 'glass' ? 'highpass' : 'bandpass';
+      noise(t, flavour === 'rock' ? 0.32 : 0.2, sweepF,
+            flavour === 'glass' ? 3200 : flavour === 'clay' ? 1400 : 500,
+            1.2, 0.1 * inten);
+      // low body thump on break
+      const o = ac.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(130, t);
+      o.frequency.exponentialRampToValueAtTime(42, t + 0.22);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.16 * inten, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+      o.connect(g); g.connect(fxGain);
+      o.start(t); o.stop(t + 0.3);
+    }
+
+    function combo(n) {
+      if (!unlocked) return;
+      const t = ac.currentTime;
+      const semi = [0, 4, 7, 12, 16, 19, 24][Math.min(n - 2, 6)];
+      const f = theme.root * Math.pow(2, semi / 12);
+      [f, f * 1.5, f * 2].forEach((ff, i) => {
+        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = ff;
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.08 - i * 0.02, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+        o.connect(g); g.connect(fxGain);
+        o.start(t); o.stop(t + 0.45);
+      });
+    }
+
+    function feverIn() {
+      if (!unlocked) return;
+      const t = ac.currentTime;
+      const o = ac.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(160, t);
+      o.frequency.exponentialRampToValueAtTime(2000, t + 0.5);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.2, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+      o.connect(g); g.connect(fxGain);
+      o.start(t); o.stop(t + 0.65);
+    }
+
+    return { unlock, chargeStart, chargeEnd, setChargeFreq, strike, shatter,
+             combo, feverIn, onThemeChange };
+  })();
+
+  // ----- Demo (loops until first touch; preload-safe, RAF-bounded) -----------
+  // Aigram preloads games, so a single-shot intro would be over before the
+  // player lands here. Loop a ghost press→release on the idle object.
+  const demo = { active: true, t: 0, phase: 0 };
+  function updateDemo(dt) {
+    if (interacted) { demo.active = false; return; }
+    demo.t += dt;
+    const CYCLE = 3.6;
+    const p = (demo.t % CYCLE) / CYCLE;
+    if (p < 0.55) {                     // pressing / charging
+      demo.charge = p / 0.55;
+      demo.released = false;
+    } else if (p < 0.62) {              // release → crack flash
+      if (!demo.released && state.obj) {
+        demo.released = true;
+        addCracks(0.55, Math.random() * Math.PI * 2);
+        state.flash = 0.4;
+      }
+      demo.charge = 0;
+    } else {
+      demo.charge = 0;
+    }
+    if (state.obj && state.obj.cracks.length > 14) state.obj.cracks.length = 0;
+  }
+
+  // Material `touch_app` icon (same glyph Murmuration uses) for the demo hand.
+  const TOUCH_PATH = new Path2D('M9 11.24V7.5C9 6.12 10.12 5 11.5 5S14 6.12 14 7.5v3.74c1.21-.81 2-2.18 2-3.74C16 5.01 13.99 3 11.5 3S7 5.01 7 7.5c0 1.56.79 2.93 2 3.74zm9.84 4.63l-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6C13 6.67 12.33 6 11.5 6S10 6.67 10 7.5v10.74l-3.43-.72c-.08-.01-.15-.03-.24-.03-.31 0-.59.13-.79.33l-.79.8 4.94 4.94c.27.27.65.44 1.06.44h6.79c.75 0 1.33-.55 1.44-1.28l.75-5.27c.01-.07.02-.14.02-.2 0-.62-.38-1.16-.92-1.38z');
+
+  function drawDemoHand() {
+    if (!demo.active || !state.obj) return;
+    const o = state.obj;
+    const press = demo.charge || 0;
+    const hx = cx + o.r * 0.55;
+    const hy = cy + o.r * 0.55 + (1 - press) * 14 * baseScale;
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.translate(hx, hy);
+    const s = baseScale * (press > 0 ? 1.5 : 1.7);
+    ctx.scale(s, s);
+    ctx.translate(-12, -12);
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 6;
+    ctx.fill(TOUCH_PATH);
+    ctx.restore();
+    if (press > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.5 * (1 - press);
+      ctx.strokeStyle = theme.rim;
+      ctx.lineWidth = 2 * baseScale;
+      ctx.beginPath();
+      ctx.arc(hx, hy - 4 * baseScale, (10 + press * 26) * baseScale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ----- Render --------------------------------------------------------------
+  function drawObject() {
+    const o = state.obj;
+    if (!o) return;
+    const age = Math.min(1, (state.elapsed - o.spawnT) / 0.32);
+    const ease = 1 - Math.pow(1 - age, 3);
+    const charging = state.holding;
+    const c = charging ? state.charge : (demo.active ? (demo.charge || 0) : 0);
+    // jitter while charging
+    const jx = charging ? (Math.random() - 0.5) * c * 9 * baseScale : 0;
+    const jy = charging ? (Math.random() - 0.5) * c * 9 * baseScale : 0;
+    const R = o.r * (0.4 + 0.6 * ease) * (1 + c * 0.04);
+
+    ctx.save();
+    ctx.translate(cx + jx, cy + jy);
+
+    // body
+    const grad = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R);
+    grad.addColorStop(0, theme.objA);
+    grad.addColorStop(1, theme.objB);
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.shadowColor = theme.objA;
+    ctx.shadowBlur = (10 + c * 30) * baseScale;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // hot inner core glow as it charges (energy building)
+    if (c > 0.02) {
+      const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+      cg.addColorStop(0, theme.core);
+      cg.addColorStop(Math.min(0.8, 0.15 + c * 0.6), 'rgba(0,0,0,0)');
+      cg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = 0.35 + c * 0.5;
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.fillStyle = cg; ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // rim light
+    ctx.beginPath();
+    ctx.arc(0, 0, R - baseScale, 0, Math.PI * 2);
+    ctx.strokeStyle = theme.rim;
+    ctx.globalAlpha = 0.4;
+    ctx.lineWidth = 2 * baseScale;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // cracks (clipped to body)
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.clip();
+    const k = R / o.r;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const cr of o.cracks) {
+      cr.grow = Math.min(1, cr.grow + 0.12);
+      drawCrackPath(cr.pts, cr.grow, k, 2.2 * baseScale, theme.crack);
+      for (const f of cr.fork) {
+        f.grow = Math.min(1, f.grow + 0.1);
+        drawCrackPath(f.pts, f.grow, k, 1.5 * baseScale, theme.crack);
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawCrackPath(pts, grow, k, lw, color) {
+    if (pts.length < 2) return;
+    const total = pts.length - 1;
+    const shown = total * grow;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x * k, pts[0].y * k);
+    for (let i = 1; i < pts.length; i++) {
+      if (i - 1 >= shown) {
+        const f = shown - (i - 1);
+        if (f <= 0) break;
+        const px = pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f;
+        const py = pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f;
+        ctx.lineTo(px * k, py * k);
+        break;
+      }
+      ctx.lineTo(pts[i].x * k, pts[i].y * k);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lw;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  function drawShards() {
+    for (const s of state.shards) {
+      const a = Math.max(0, s.life / s.max);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(s.x, s.y);
+      ctx.rotate(s.rot);
+      ctx.beginPath();
+      ctx.moveTo(s.verts[0].x * s.scale, s.verts[0].y * s.scale);
+      for (let i = 1; i < s.verts.length; i++) ctx.lineTo(s.verts[i].x * s.scale, s.verts[i].y * s.scale);
+      ctx.closePath();
+      ctx.fillStyle = s.color;
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawChips() {
+    for (const p of state.chips) {
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawRings() {
+    for (const r of state.rings) {
+      ctx.globalAlpha = Math.max(0, r.life / r.max) * 0.6;
+      ctx.strokeStyle = theme.core;
+      ctx.lineWidth = 3 * baseScale;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ----- Simulate ------------------------------------------------------------
+  function simulate(dt) {
+    state.elapsed += dt;
+
+    if (demo.active) updateDemo(dt);
+
+    if (state.holding) {
+      state.charge = Math.min(1, (state.elapsed - state.chargeStart) / CHARGE_TIME);
+      audio.setChargeFreq(state.charge);
+    }
+
+    if (!state.obj && state._respawnAt != null && state.elapsed >= state._respawnAt) {
+      spawnObject(state.elapsed);
+      state._respawnAt = null;
+    }
+
+    // combo decay (visual reset only; no fail)
+    if (state.combo > 0 && state.elapsed - state.lastShatterT > COMBO_WINDOW) {
+      if (!state.holding) {
+        state.combo = 0;
+        if (state.fever) { state.fever = false; feverEl.classList.remove('show'); }
+        updateHUD();
+      }
+    }
+
+    for (let i = state.shards.length - 1; i >= 0; i--) {
+      const s = state.shards[i];
+      s.x += s.vx * dt; s.y += s.vy * dt;
+      s.vy += 1000 * baseScale * dt;
+      s.vx *= 0.992;
+      s.rot += s.vr * dt;
+      s.life -= dt;
+      if (s.life <= 0 || s.y > H + 120) state.shards.splice(i, 1);
+    }
+    for (let i = state.chips.length - 1; i >= 0; i--) {
+      const p = state.chips[i];
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vy += 520 * baseScale * dt;
+      p.life -= dt;
+      if (p.life <= 0) state.chips.splice(i, 1);
+    }
+    for (let i = state.rings.length - 1; i >= 0; i--) {
+      const r = state.rings[i];
+      r.r += 620 * baseScale * dt;
+      r.life -= dt;
+      if (r.life <= 0) state.rings.splice(i, 1);
+    }
+    if (state.shake > 0) state.shake = Math.max(0, state.shake - dt * 60 * baseScale);
+    if (state.flash > 0) state.flash = Math.max(0, state.flash - dt * 3.2);
+  }
+
+  // ----- Loop ----------------------------------------------------------------
+  let lastT = performance.now();
+  let running = true;
+  function tick(now) {
+    if (!running) { lastT = now; requestAnimationFrame(tick); return; }
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+    simulate(dt);
+
+    ctx.fillStyle = theme.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    if (state.shake > 0) {
+      ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+    }
+    drawRings();
+    drawObject();
+    drawShards();
+    drawChips();
+    drawDemoHand();
+    ctx.restore();
+
+    if (state.flash > 0) {
+      ctx.globalAlpha = Math.min(0.6, state.flash * 0.6);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+    if (state.fever) {
+      ctx.globalAlpha = 0.06 + Math.sin(state.elapsed * 8) * 0.03;
+      ctx.fillStyle = '#ff5a2b';
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  // ----- Boot ----------------------------------------------------------------
+  applyTheme();
+  spawnObject(0);
+  requestAnimationFrame((t) => { lastT = t; tick(t); });
+
+  document.addEventListener('visibilitychange', () => {
+    running = document.visibilityState === 'visible';
+    lastT = performance.now();
+  });
+
+  // Expose for leaderboard module
+  window.CT_GAME = { currentScore: () => state.score, getState: () => state };
+})();
+
+// ── Leaderboard Module ─────────────────────────────────────────────────────
+(function () {
+  'use strict';
+  const GAMES_API = 'https://games-api.xinghuan-yin.workers.dev';
+  const GAME_ID   = 'crack-tap';
+
+  function toB64(s)   { return btoa(unescape(encodeURIComponent(s))); }
+  function fromB64(s) { return decodeURIComponent(escape(atob(s))); }
+
+  const params     = new URLSearchParams(window.location.search);
+  const telegramId = params.get('telegram_id') || null;
+  const rawOrigin  = params.get('api_origin');
+  const apiOrigin  = rawOrigin ? decodeURIComponent(rawOrigin) : null;
+  const isInAigram = !!(telegramId && apiOrigin);
+
+  let currentUser = null;
+  let lastSubmittedScore = 0;
+
+  function callAigramAPI(url) {
+    return new Promise((resolve, reject) => {
+      const id = crypto.randomUUID();
+      let timer;
+      const handler = e => {
+        if (e.origin !== apiOrigin) return;
+        const msg = typeof e.data === 'string' ? e.data : '';
+        if (!msg.startsWith('callAPIResult-')) return;
+        try {
+          const r = JSON.parse(fromB64(msg.slice('callAPIResult-'.length)));
+          if (r.request_id !== id) return;
+          window.removeEventListener('message', handler);
+          clearTimeout(timer);
+          if (r.success) resolve(r.data); else reject(new Error(r.error || 'API error'));
+        } catch {}
+      };
+      window.addEventListener('message', handler);
+      window.parent.postMessage(
+        'callAPI-' + toB64(JSON.stringify({ url, method: 'GET', data: null, request_id: id, emitter: window.location.origin })),
+        apiOrigin
+      );
+      timer = setTimeout(() => { window.removeEventListener('message', handler); reject(new Error('timeout')); }, 10000);
+    });
+  }
+
+  if (isInAigram) {
+    callAigramAPI(`/note/telegram/user/get/info/by/telegram_id?telegram_id=${telegramId}`)
+      .then(r => { currentUser = r.data; }).catch(() => {});
+  }
+
+  function submit(score, force) {
+    if (!telegramId || !score || score <= 0) return;
+    if (!force && score <= lastSubmittedScore) return;
+    lastSubmittedScore = score;
+    fetch(`${GAMES_API}/score`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        game_id: GAME_ID, telegram_id: telegramId,
+        name: (currentUser && currentUser.name) || telegramId,
+        avatar_url: (currentUser && currentUser.head_url) || '',
+        score,
+      }),
+    }).catch(() => {});
+  }
+
+  async function fetchGlobal() {
+    const res = await fetch(`${GAMES_API}/leaderboard?game_id=${GAME_ID}&limit=50`);
+    const json = await res.json();
+    return (json.leaderboard || []).map(e => Object.assign({}, e, { isMe: e.telegram_id === telegramId }));
+  }
+
+  async function fetchFriends() {
+    if (!isInAigram) return [];
+    const friendIds = new Set([telegramId]);
+    try {
+      const contacts = await callAigramAPI(`/note/telegram/user/contact/list?telegram_id=${telegramId}`);
+      const list = Array.isArray(contacts) ? contacts : (contacts && contacts.data ? contacts.data : []);
+      list.forEach(f => { if (f.telegram_id) friendIds.add(String(f.telegram_id)); });
+    } catch {}
+    try {
+      const ids = [...friendIds].join(',');
+      const res = await fetch(`${GAMES_API}/leaderboard?game_id=${GAME_ID}&telegram_ids=${encodeURIComponent(ids)}`);
+      const json = await res.json();
+      return (json.leaderboard || []).map(e => Object.assign({}, e, { isMe: e.telegram_id === telegramId }));
+    } catch { return []; }
+  }
+
+  function openProfile(tid) {
+    if (!apiOrigin || !tid) return;
+    try { window.parent.postMessage('AW.PROFILE.OPEN-' + btoa(JSON.stringify({ id: tid })), apiOrigin); } catch {}
+  }
+
+  window.CT_LB = { submit, isInAigram };
+
+  function saveOnHide() {
+    if (!window.CT_GAME) return;
+    submit(window.CT_GAME.currentScore(), false);
+  }
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveOnHide();
+  });
+  window.addEventListener('pagehide', saveOnHide);
+
+  const MEDALS = ['🥇','🥈','🥉'];
+  const overlay = document.getElementById('lb-overlay');
+  const body    = document.getElementById('lb-body');
+  const tabs    = document.getElementById('lb-tabs');
+  const tabGlobal  = document.getElementById('lb-tab-global');
+  const tabFriends = document.getElementById('lb-tab-friends');
+
+  const isZh = (!localStorage.getItem('game_locale') && navigator.language.toLowerCase().startsWith('zh'))
+             || localStorage.getItem('game_locale') === 'zh';
+  const STR = isZh
+    ? { me:'我', empty:'暂无记录,快来第一个上榜!', emptyFriends:'好友还未上榜', failed:'加载失败' }
+    : { me:'me', empty:'No records yet. Be the first!', emptyFriends:'No friends on the board yet.', failed:'Load failed' };
+
+  if (isInAigram) tabs.style.display = 'flex';
+
+  let currentTab = 'global';
+
+  function openLB()  { overlay.classList.add('show'); loadTab(currentTab); }
+  function closeLB() { overlay.classList.remove('show'); }
+
+  function avatarHTML(url, name, size) {
+    const s = size || 38;
+    if (url) return `<div class="lb-avatar" style="width:${s}px;height:${s}px"><img src="${url}" alt=""></div>`;
+    const initial = (name || '?').charAt(0).toUpperCase();
+    return `<div class="lb-avatar" style="width:${s}px;height:${s}px;font-size:${Math.round(s*0.38)}px">${initial}</div>`;
+  }
+
+  async function loadTab(tab) {
+    body.innerHTML = '<div class="lb-state"><span class="lb-spinner"></span></div>';
+    tabGlobal.classList.toggle('active', tab === 'global');
+    tabFriends.classList.toggle('active', tab === 'friends');
+    try {
+      const entries = tab === 'global' ? await fetchGlobal() : await fetchFriends();
+      if (entries.length === 0) {
+        body.innerHTML = `<div class="lb-state"><span class="lb-state-icon">🎮</span><span class="lb-state-text">${tab === 'friends' ? STR.emptyFriends : STR.empty}</span></div>`;
+        return;
+      }
+      body.innerHTML = entries.map((e, i) => {
+        const isTop = i < 3;
+        const rank = isTop ? `<span class="lb-medal">${MEDALS[i]}</span>` : `<span class="lb-num">${i+1}</span>`;
+        const av = avatarHTML(e.avatar_url, e.name, isTop ? 42 : 36);
+        const meTag = e.isMe ? `<span class="lb-me-tag">${STR.me}</span>` : '';
+        const clickable = isInAigram ? ' clickable' : '';
+        const safeName = String(e.name || '').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+        return `<div class="lb-row${isTop?' top':''}${e.isMe?' me':''}${clickable}" data-tid="${e.telegram_id}">
+          <div class="lb-rank">${rank}</div>
+          ${av}
+          <div class="lb-info"><span class="lb-name">${safeName}</span>${meTag}</div>
+          <span class="lb-score">${Number(e.score).toLocaleString()}</span>
+        </div>`;
+      }).join('');
+      if (isInAigram) {
+        body.querySelectorAll('.lb-row.clickable').forEach(row => {
+          row.addEventListener('pointerdown', () => openProfile(row.dataset.tid));
+        });
+      }
+    } catch {
+      body.innerHTML = `<div class="lb-state"><span class="lb-state-text">${STR.failed}</span></div>`;
+    }
+  }
+
+  tabGlobal.addEventListener('pointerdown', () => { currentTab='global'; loadTab('global'); });
+  tabFriends.addEventListener('pointerdown', () => { currentTab='friends'; loadTab('friends'); });
+  document.getElementById('lb-close-btn').addEventListener('pointerdown', closeLB);
+  overlay.addEventListener('pointerdown', e => { if (e.target === overlay) closeLB(); });
+
+  function wire(id) {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('pointerdown', e => { e.stopPropagation(); openLB(); });
+  }
+  wire('hudLbBtn');
+})();
+</script>
+</body>
+</html>
