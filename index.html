@@ -10,7 +10,10 @@
 <title>Crack Tap</title>
 <style>
   :root { --bg: #060713; --accent: #9b6bff; }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * {
+    box-sizing: border-box; -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+  }
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
     background: var(--bg);
