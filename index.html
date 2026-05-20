@@ -13,7 +13,9 @@
     --bg: #07060c;
     --ink: #f5efe2;           /* warm ivory */
     --accent: #d8c08a;        /* single soft gold for rare emphasis */
-    --serif: "Cormorant Garamond", "Iowan Old Style", "Hoefler Text", Georgia, "Times New Roman", serif;
+    --serif: "Cormorant Garamond", "Iowan Old Style", "Hoefler Text", Georgia, "Times New Roman",
+             "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "Source Han Serif TC",
+             "Noto Serif CJK TC", "Songti TC", STSong, SimSun, serif;
   }
   * {
     box-sizing: border-box; -webkit-tap-highlight-color: transparent;
@@ -283,7 +285,7 @@
     <div class="line" id="rdLine"></div>
   </div>
 
-  <div class="credits">Read the cracks</div>
+  <div class="credits" id="credits">Read the cracks</div>
 
 <script>
 (() => {
@@ -323,101 +325,250 @@
     },
   };
 
+  // ----- i18n (auto zh/en) ---------------------------------------------------
+  // localStorage override > navigator.language. Test: localStorage.setItem(
+  // 'game_locale','en' | 'zh'); location.reload().
+  const LANG = (() => {
+    const ov = localStorage.getItem('game_locale');
+    if (ov === 'en' || ov === 'zh') return ov;
+    return (navigator.language || 'en').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  })();
+  const L = (s) => (s && typeof s === 'object') ? (s[LANG] || s.en) : s;
+
+  const UI = {
+    fortune:   { en: 'Fortune',     zh: '命数' },
+    trueSight: { en: 'TRUE SIGHT',  zh: '通灵' },
+    trance:    { en: 'TRANCE',      zh: '入定' },
+    hint:      { en: 'Hold to read · release before it shatters',
+                 zh: '按住读纹 · 临界之前松手' },
+    credits:   { en: 'READ THE CRACKS', zh: '观纹问卜' },
+    shatteredGlory: { en: 'Shattered Glory', zh: '碎中之辉' },
+    shattered:      { en: 'Shattered',       zh: '凶碎' },
+    shatteredOf:    { en: ' · Shattered',    zh: ' · 碎' },
+  };
+
   // ----- Divination lore -----------------------------------------------------
   // Each material is a reading tradition. The crack pattern at the moment you
   // release IS the omen; the deeper you dared, the rarer the tier it can draw.
+  // Verdicts & lines are bilingual; render via L().
   const LORE = {
-    crystal: { name: 'The Arcana', tiers: {
+    crystal: { name: { en: 'The Arcana', zh: '塔罗' }, tiers: {
       whisper: [
-        { v: 'The Fool', l: 'A first step into open air. Nothing decided, everything possible.' },
-        { v: 'The Page', l: 'Small news travels toward you. Listen for the knock.' },
-        { v: 'Two of Cups', l: 'Two streams find the same valley.' },
-        { v: 'The Hermit', l: 'The lamp is small but it is yours. Walk slow.' },
-        { v: 'Wheel, turning', l: 'What rose will set; what set will rise again.' },
-        { v: 'Six of Wands', l: 'A quiet victory no one else has noticed yet.' },
+        { v: { en: 'The Fool',         zh: '愚者' },
+          l: { en: 'A first step into open air. Nothing decided, everything possible.',
+               zh: '一步迈入旷野。未定之事，皆是可能。' }},
+        { v: { en: 'The Page',         zh: '侍者' },
+          l: { en: 'Small news travels toward you. Listen for the knock.',
+               zh: '微讯将至。候那一声轻叩。' }},
+        { v: { en: 'Two of Cups',      zh: '圣杯二' },
+          l: { en: 'Two streams find the same valley.',
+               zh: '两脉清流，归于同谷。' }},
+        { v: { en: 'The Hermit',       zh: '隐士' },
+          l: { en: 'The lamp is small but it is yours. Walk slow.',
+               zh: '灯虽微小，却为你而执。慢行。' }},
+        { v: { en: 'Wheel, turning',   zh: '命运之轮' },
+          l: { en: 'What rose will set; what set will rise again.',
+               zh: '升者必落，落者复升。' }},
+        { v: { en: 'Six of Wands',     zh: '权杖六' },
+          l: { en: 'A quiet victory no one else has noticed yet.',
+               zh: '无声捷报，尚无人察。' }},
       ],
       vision: [
-        { v: 'The Lovers', l: 'A choice that is really a vow. Choose with the whole hand.' },
-        { v: 'The Chariot', l: 'Two horses, opposite minds — and still you arrive.' },
-        { v: 'Strength', l: 'The lion did not leave. You simply stopped flinching.' },
-        { v: 'The Star', l: 'After the dark water, a light that asks nothing back.' },
-        { v: 'Justice', l: 'The scale remembers what you have forgotten.' },
-        { v: 'Temperance', l: 'Fire poured into water, and neither one screamed.' },
+        { v: { en: 'The Lovers',       zh: '恋人' },
+          l: { en: 'A choice that is really a vow. Choose with the whole hand.',
+               zh: '看似抉择，实为誓盟。落子要尽力。' }},
+        { v: { en: 'The Chariot',      zh: '战车' },
+          l: { en: 'Two horses, opposite minds — and still you arrive.',
+               zh: '两驾分心，犹能抵岸。' }},
+        { v: { en: 'Strength',         zh: '力量' },
+          l: { en: 'The lion did not leave. You simply stopped flinching.',
+               zh: '狮未去，是你不再退避。' }},
+        { v: { en: 'The Star',         zh: '星' },
+          l: { en: 'After the dark water, a light that asks nothing back.',
+               zh: '渡过暗水，有一束不索求的光。' }},
+        { v: { en: 'Justice',          zh: '正义' },
+          l: { en: 'The scale remembers what you have forgotten.',
+               zh: '那杆秤，记得你已忘之事。' }},
+        { v: { en: 'Temperance',       zh: '节制' },
+          l: { en: 'Fire poured into water, and neither one screamed.',
+               zh: '火入水中，两者皆未惊。' }},
       ],
       revelation: [
-        { v: 'The Sun', l: 'Everything you buried is growing in full daylight.' },
-        { v: 'The Magician', l: 'The tools were always on the table. Now your hands agree.' },
-        { v: 'Death', l: 'Not an ending — a door with the hinges finally oiled.' },
-        { v: 'The World', l: 'The circle closes, and you are standing inside it.' },
-        { v: 'The High Priestess', l: 'She will not speak. She will let you become the answer.' },
+        { v: { en: 'The Sun',          zh: '太阳' },
+          l: { en: 'Everything you buried is growing in full daylight.',
+               zh: '你所埋的，正在白日下蔓生。' }},
+        { v: { en: 'The Magician',     zh: '魔法师' },
+          l: { en: 'The tools were always on the table. Now your hands agree.',
+               zh: '器具早在桌上，如今手亦相应。' }},
+        { v: { en: 'Death',            zh: '死神' },
+          l: { en: 'Not an ending — a door with the hinges finally oiled.',
+               zh: '非为终结——是终于上好油的门轴。' }},
+        { v: { en: 'The World',        zh: '世界' },
+          l: { en: 'The circle closes, and you are standing inside it.',
+               zh: '圆环合拢，你正立其中。' }},
+        { v: { en: 'The High Priestess', zh: '女祭司' },
+          l: { en: 'She will not speak. She will let you become the answer.',
+               zh: '她不语，只让你自成为答。' }},
       ],
       omen: [
-        { v: 'The Tower', l: 'Lightning is honest. What it takes was never yours.' },
-        { v: 'Judgement', l: 'A horn over still water. The old name will not fit anymore.' },
-        { v: 'The Empress, crowned', l: 'Abundance with your face on it. Spend it well.' },
-        { v: 'The Moon, full', l: 'Every shadow tonight is telling the truth in reverse.' },
+        { v: { en: 'The Tower',        zh: '塔' },
+          l: { en: 'Lightning is honest. What it takes was never yours.',
+               zh: '雷霆诚实——所取从不属你。' }},
+        { v: { en: 'Judgement',        zh: '审判' },
+          l: { en: 'A horn over still water. The old name will not fit anymore.',
+               zh: '静水之上一声号角，旧名再难合身。' }},
+        { v: { en: 'The Empress, crowned', zh: '加冕的皇后' },
+          l: { en: 'Abundance with your face on it. Spend it well.',
+               zh: '满载之富，刻着你的脸。慎用之。' }},
+        { v: { en: 'The Moon, full',   zh: '满月' },
+          l: { en: 'Every shadow tonight is telling the truth in reverse.',
+               zh: '今夜每道阴影，皆以反语吐实。' }},
       ],
     }},
-    ceramic: { name: 'The Oracle Bone', tiers: {
+    ceramic: { name: { en: 'The Oracle Bone', zh: '甲骨' }, tiers: {
       whisper: [
-        { v: 'Fair Wind', l: 'The diviner reads: a small journey, no rain.' },
-        { v: 'Guest Approaching', l: 'Set one more bowl. The crack bends toward the door.' },
-        { v: 'Patience', l: 'The ox does not hurry and still crosses the field.' },
-        { v: 'Modest Harvest', l: 'Enough grain to keep, not enough to boast.' },
-        { v: 'Still Water', l: 'No omen is itself an omen. Rest.' },
-        { v: 'Mended Vessel', l: 'The seam holds. Pour without fear.' },
+        { v: { en: 'Fair Wind',         zh: '顺风' },
+          l: { en: 'The diviner reads: a small journey, no rain.',
+               zh: '卜辞曰：小往，无雨。' }},
+        { v: { en: 'Guest Approaching', zh: '客至' },
+          l: { en: 'Set one more bowl. The crack bends toward the door.',
+               zh: '兆纹向门，备一只碗。' }},
+        { v: { en: 'Patience',          zh: '守时' },
+          l: { en: 'The ox does not hurry and still crosses the field.',
+               zh: '牛不疾，仍越其畴。' }},
+        { v: { en: 'Modest Harvest',    zh: '小获' },
+          l: { en: 'Enough grain to keep, not enough to boast.',
+               zh: '余粮足而不夸。' }},
+        { v: { en: 'Still Water',       zh: '静水' },
+          l: { en: 'No omen is itself an omen. Rest.',
+               zh: '无兆即兆。可息。' }},
+        { v: { en: 'Mended Vessel',     zh: '修器' },
+          l: { en: 'The seam holds. Pour without fear.',
+               zh: '接缝守固，可斟无惧。' }},
       ],
       vision: [
-        { v: 'The King Hunts', l: 'Move at dawn. The fork in the bone points east.' },
-        { v: 'Ancestors Pleased', l: 'The smoke rose straight. What you asked is granted.' },
-        { v: 'River Rising', l: 'Build higher now, while the sky is still kind.' },
-        { v: 'Sworn Brother', l: 'An ally arrives carrying half of your burden.' },
-        { v: 'Bronze Cast True', l: 'The mold did not crack. The work will outlast you.' },
-        { v: 'Crops Favoured', l: 'Heaven inclines toward the diligent field.' },
+        { v: { en: 'The King Hunts',    zh: '王田' },
+          l: { en: 'Move at dawn. The fork in the bone points east.',
+               zh: '黎明启行，兆指向东。' }},
+        { v: { en: 'Ancestors Pleased', zh: '祖以歆' },
+          l: { en: 'The smoke rose straight. What you asked is granted.',
+               zh: '烟柱径直，所祈得允。' }},
+        { v: { en: 'River Rising',      zh: '川兴' },
+          l: { en: 'Build higher now, while the sky is still kind.',
+               zh: '趁天尚和，筑而高之。' }},
+        { v: { en: 'Sworn Brother',     zh: '结义' },
+          l: { en: 'An ally arrives carrying half of your burden.',
+               zh: '故人来，分你半担。' }},
+        { v: { en: 'Bronze Cast True',  zh: '鼎成' },
+          l: { en: 'The mold did not crack. The work will outlast you.',
+               zh: '范不裂，所铸长在。' }},
+        { v: { en: 'Crops Favoured',    zh: '年有' },
+          l: { en: 'Heaven inclines toward the diligent field.',
+               zh: '天眷勤畎，谷盈仓。' }},
       ],
       revelation: [
-        { v: 'Mandate Shifts', l: 'What rules you is listening for a reason to let go.' },
-        { v: 'Great Rain Coming', l: 'Drought ends in the season you almost gave up.' },
-        { v: 'The Tortoise Speaks', l: 'A thousand years answered in a single split.' },
-        { v: 'Phoenix in Ash', l: 'Burn the old hall. It was built facing the wrong star.' },
-        { v: 'Long Life Foretold', l: 'The crack runs unbroken to the rim. So will you.' },
+        { v: { en: 'Mandate Shifts',    zh: '命革' },
+          l: { en: 'What rules you is listening for a reason to let go.',
+               zh: '在上者正候一由而放手。' }},
+        { v: { en: 'Great Rain Coming', zh: '雨将至' },
+          l: { en: 'Drought ends in the season you almost gave up.',
+               zh: '旱终于将欲弃之时。' }},
+        { v: { en: 'The Tortoise Speaks', zh: '龟言' },
+          l: { en: 'A thousand years answered in a single split.',
+               zh: '千载之问，一裂之答。' }},
+        { v: { en: 'Phoenix in Ash',    zh: '凤涅' },
+          l: { en: 'Burn the old hall. It was built facing the wrong star.',
+               zh: '旧堂当焚——所向之星非也。' }},
+        { v: { en: 'Long Life Foretold', zh: '大寿' },
+          l: { en: 'The crack runs unbroken to the rim. So will you.',
+               zh: '兆纹直至缘，命亦如是。' }},
       ],
       omen: [
-        { v: 'Heaven Splits', l: 'The bone broke crosswise — a verdict, not advice.' },
-        { v: 'Eclipse Read', l: 'The sun was eaten and returned. So is everything you fear.' },
-        { v: 'Dragon Ascending', l: 'Rare bone, rare fate. Do not waste it on a small wish.' },
-        { v: 'The Last Diviner', l: 'This answer ends the question forever.' },
+        { v: { en: 'Heaven Splits',     zh: '天裂' },
+          l: { en: 'The bone broke crosswise — a verdict, not advice.',
+               zh: '骨横而裂——此为判，非劝。' }},
+        { v: { en: 'Eclipse Read',      zh: '食占' },
+          l: { en: 'The sun was eaten and returned. So is everything you fear.',
+               zh: '日被吞而复——凡所惧亦然。' }},
+        { v: { en: 'Dragon Ascending', zh: '龙升' },
+          l: { en: 'Rare bone, rare fate. Do not waste it on a small wish.',
+               zh: '罕骨罕命，勿费于小愿。' }},
+        { v: { en: 'The Last Diviner', zh: '末卜' },
+          l: { en: 'This answer ends the question forever.',
+               zh: '此答永止此问。' }},
       ],
     }},
-    geode: { name: 'The Runes', tiers: {
+    geode: { name: { en: 'The Runes', zh: '符文' }, tiers: {
       whisper: [
-        { v: 'Raidō', l: 'The road, not the inn. Keep the wheels turning.' },
-        { v: 'Kaunan', l: 'A small torch. Enough to find the next torch.' },
-        { v: 'Wunjō', l: 'Joy with no reason is still joy. Take it.' },
-        { v: 'Gebō', l: 'A gift binds two ways. Give knowing this.' },
-        { v: 'Berkanan', l: 'Something is growing under the snow you cannot see.' },
-        { v: 'Ehwaz', l: 'Trust the horse. It has crossed worse fords.' },
+        { v: { en: 'Raidō',     zh: 'Raidō · 旅' },
+          l: { en: 'The road, not the inn. Keep the wheels turning.',
+               zh: '在路，不在驿。轮要转。' }},
+        { v: { en: 'Kaunan',    zh: 'Kaunan · 炬' },
+          l: { en: 'A small torch. Enough to find the next torch.',
+               zh: '微炬一握，足见次一炬之所在。' }},
+        { v: { en: 'Wunjō',     zh: 'Wunjō · 喜' },
+          l: { en: 'Joy with no reason is still joy. Take it.',
+               zh: '喜不必有由，亦受之。' }},
+        { v: { en: 'Gebō',      zh: 'Gebō · 赠' },
+          l: { en: 'A gift binds two ways. Give knowing this.',
+               zh: '礼系两端。施时知此。' }},
+        { v: { en: 'Berkanan',  zh: 'Berkanan · 生' },
+          l: { en: 'Something is growing under the snow you cannot see.',
+               zh: '雪下有物默长，目所未见。' }},
+        { v: { en: 'Ehwaz',     zh: 'Ehwaz · 骥' },
+          l: { en: 'Trust the horse. It has crossed worse fords.',
+               zh: '信骥之蹄，曾涉更恶之渡。' }},
       ],
       vision: [
-        { v: 'Tiwaz', l: 'Victory by sacrifice. Name the hand you will give.' },
-        { v: 'Algiz', l: 'The elk-sedge guards you. Stand where it stands.' },
-        { v: 'Sōwilō', l: 'The sun-wheel turns for those still rowing.' },
-        { v: 'Uruz', l: 'Wild strength offered to you — break it or be broken.' },
-        { v: 'Ansuz', l: 'A god is speaking through an ordinary mouth. Listen closely.' },
-        { v: 'Jēra', l: 'The year completes what the day could not.' },
+        { v: { en: 'Tiwaz',     zh: 'Tiwaz · 战' },
+          l: { en: 'Victory by sacrifice. Name the hand you will give.',
+               zh: '以献得胜。名其所付之手。' }},
+        { v: { en: 'Algiz',     zh: 'Algiz · 麋' },
+          l: { en: 'The elk-sedge guards you. Stand where it stands.',
+               zh: '麋草所护，立其所立。' }},
+        { v: { en: 'Sōwilō',    zh: 'Sōwilō · 日轮' },
+          l: { en: 'The sun-wheel turns for those still rowing.',
+               zh: '日轮为犹划者转。' }},
+        { v: { en: 'Uruz',      zh: 'Uruz · 野' },
+          l: { en: 'Wild strength offered to you — break it or be broken.',
+               zh: '野力赠你——驯之，或为其驯。' }},
+        { v: { en: 'Ansuz',     zh: 'Ansuz · 言' },
+          l: { en: 'A god is speaking through an ordinary mouth. Listen closely.',
+               zh: '神借常人之口言。细听。' }},
+        { v: { en: 'Jēra',      zh: 'Jēra · 岁' },
+          l: { en: 'The year completes what the day could not.',
+               zh: '岁成日之未成。' }},
       ],
       revelation: [
-        { v: 'Dagaz', l: 'The hinge of dawn. Cross now and you cannot be followed.' },
-        { v: 'Ōþala', l: 'What your blood owns is calling its name in yours.' },
-        { v: 'Ingwaz', l: 'The seed-fire is set. Step away and let it burn inward.' },
-        { v: 'Perþ', l: 'The lot-cup tips. What was hidden chooses to be known.' },
-        { v: 'Eihwaz', l: 'The world-tree’s spine. Death and life share one wood.' },
+        { v: { en: 'Dagaz',     zh: 'Dagaz · 旦' },
+          l: { en: 'The hinge of dawn. Cross now and you cannot be followed.',
+               zh: '旦之合页。此渡，无人能追。' }},
+        { v: { en: 'Ōþala',     zh: 'Ōþala · 宗' },
+          l: { en: 'What your blood owns is calling its name in yours.',
+               zh: '血脉所有，今唤你之名。' }},
+        { v: { en: 'Ingwaz',    zh: 'Ingwaz · 种' },
+          l: { en: 'The seed-fire is set. Step away and let it burn inward.',
+               zh: '种火既燃，退而任其内焚。' }},
+        { v: { en: 'Perþ',      zh: 'Perþ · 签' },
+          l: { en: 'The lot-cup tips. What was hidden chooses to be known.',
+               zh: '签筒倾覆——所藏自择被知。' }},
+        { v: { en: 'Eihwaz',    zh: 'Eihwaz · 世树' },
+          l: { en: 'The world-tree’s spine. Death and life share one wood.',
+               zh: '世树之脊。死生同一木。' }},
       ],
       omen: [
-        { v: 'Hagalaz', l: 'The hail-rune. Ruin that plants next summer’s field.' },
-        { v: 'Naudiz', l: 'Need itself, carved deep. The fire you make from nothing.' },
-        { v: 'Þurisaz', l: 'The thorn-giant turns. Aim it, or it aims itself.' },
-        { v: 'Wyrd Unbound', l: 'A thread the Norns did not expect. Yours to pull.' },
+        { v: { en: 'Hagalaz',   zh: 'Hagalaz · 雹' },
+          l: { en: 'The hail-rune. Ruin that plants next summer’s field.',
+               zh: '雹之符——废墟正埋来夏之田。' }},
+        { v: { en: 'Naudiz',    zh: 'Naudiz · 困' },
+          l: { en: 'Need itself, carved deep. The fire you make from nothing.',
+               zh: '困本身，深刻于骨——无中生火。' }},
+        { v: { en: 'Þurisaz',   zh: 'Þurisaz · 棘' },
+          l: { en: 'The thorn-giant turns. Aim it, or it aims itself.',
+               zh: '棘巨人将自向。指之，或被其指。' }},
+        { v: { en: 'Wyrd Unbound', zh: 'Wyrd · 命脱缚' },
+          l: { en: 'A thread the Norns did not expect. Yours to pull.',
+               zh: '诺恩未编之线——由你来拉。' }},
       ],
     }},
   };
@@ -425,35 +576,96 @@
   // or a dire one. Phrased to fit any tradition.
   const SHATTER = {
     great: [
-      { v: 'The Shattered Sun', l: 'It broke into a thousand pieces of pure gold. Take all of it.' },
-      { v: 'Vision Unbound', l: 'You held past the rim — and the rim was the only cage.' },
-      { v: 'Splendor', l: 'Most never dare this deep. The fragments spell your name.' },
-      { v: 'The Fool’s Reward', l: 'Recklessness, this once, looked exactly like courage.' },
-      { v: 'Crowned in Glass', l: 'A fortune too large to hold in one whole sphere.' },
-      { v: 'Fate Cracked Open', l: 'The future spilled out faster than it could be written.' },
+      { v: { en: 'The Shattered Sun',  zh: '碎日' },
+        l: { en: 'It broke into a thousand pieces of pure gold. Take all of it.',
+             zh: '碎成千金，悉数为你。' }},
+      { v: { en: 'Vision Unbound',     zh: '视无垠' },
+        l: { en: 'You held past the rim — and the rim was the only cage.',
+             zh: '你越其缘——而缘本是唯一笼。' }},
+      { v: { en: 'Splendor',           zh: '灿盛' },
+        l: { en: 'Most never dare this deep. The fragments spell your name.',
+             zh: '极少有人敢深至此。碎片正拼出你的名字。' }},
+      { v: { en: 'The Fool’s Reward',  zh: '愚酬' },
+        l: { en: 'Recklessness, this once, looked exactly like courage.',
+             zh: '此一回，鲁莽恰似勇气。' }},
+      { v: { en: 'Crowned in Glass',   zh: '玻璃为冕' },
+        l: { en: 'A fortune too large to hold in one whole sphere.',
+             zh: '福过于盛，非一球可载。' }},
+      { v: { en: 'Fate Cracked Open',  zh: '天命裂启' },
+        l: { en: 'The future spilled out faster than it could be written.',
+             zh: '未来溢出，快过笔下书成。' }},
     ],
     dire: [
-      { v: 'Hubris', l: 'You wanted more than the glass could carry. Now neither remains.' },
-      { v: 'The Empty Hand', l: 'Held too long. The omen left before you could read it.' },
-      { v: 'Dust', l: 'Greed has a sound. It is exactly this one.' },
-      { v: 'The Broken Mirror', l: 'Seven years, or seven seconds. The price was the same.' },
-      { v: 'Nothing Answered', l: 'The cracks ran out before the meaning arrived.' },
-      { v: 'Overdrawn', l: 'You asked the cosmos for one more. It said: that is enough.' },
+      { v: { en: 'Hubris',             zh: '自大' },
+        l: { en: 'You wanted more than the glass could carry. Now neither remains.',
+             zh: '索求过球之所载，二者俱失。' }},
+      { v: { en: 'The Empty Hand',     zh: '空手' },
+        l: { en: 'Held too long. The omen left before you could read it.',
+             zh: '持之过久——兆未读罢已散。' }},
+      { v: { en: 'Dust',               zh: '尘' },
+        l: { en: 'Greed has a sound. It is exactly this one.',
+             zh: '贪婪有其声——即此声。' }},
+      { v: { en: 'The Broken Mirror',  zh: '破镜' },
+        l: { en: 'Seven years, or seven seconds. The price was the same.',
+             zh: '七年，或七秒。其价无二。' }},
+      { v: { en: 'Nothing Answered',   zh: '未答' },
+        l: { en: 'The cracks ran out before the meaning arrived.',
+             zh: '裂罢，意未至。' }},
+      { v: { en: 'Overdrawn',          zh: '透支' },
+        l: { en: 'You asked the cosmos for one more. It said: that is enough.',
+             zh: '你向天再求一次。天曰：止矣。' }},
     ],
   };
 
-  // Depth → tier. Releasing in `brink` draws the rarest pool; holding past
-  // 1.0 detonates into the shatter gamble.
-  const TIERS = [
-    { key: 'whisper',    min: 0.10, label: 'Whisper',    score: 6   },
-    { key: 'vision',     min: 0.34, label: 'Vision',     score: 18  },
-    { key: 'revelation', min: 0.62, label: 'Revelation', score: 45  },
-    { key: 'omen',       min: 0.86, label: 'Omen · Brink', score: 110 },
-  ];
-  function tierAt(d) {
-    let t = null;
-    for (const T of TIERS) if (d >= T.min) t = T;
-    return t;                       // null if below the minimum (no reading)
+  // Tier definitions — labels & scores are constant; the *positions* on the
+  // depth axis are randomized per orb (see spawnObject) so the player can
+  // never memorise a release point.
+  const TIER_KEYS = ['whisper', 'vision', 'revelation', 'omen'];
+  const TIER_LABELS = {
+    whisper:    { en: 'Whisper',         zh: '微兆' },
+    vision:     { en: 'Vision',          zh: '显象' },
+    revelation: { en: 'Revelation',      zh: '启示' },
+    omen:       { en: 'Omen · Brink',    zh: '大凶 · 临界' },
+  };
+  const TIER_SCORES = { whisper: 6, vision: 18, revelation: 45, omen: 110 };
+  const TIER_IDX = { whisper: 0, vision: 1, revelation: 2, omen: 3 };
+
+  // Per-orb thresholds. Vision / Revelation / Brink positions wander within
+  // sane ranges; brink width (1 - brink) is the rare-omen window, sometimes
+  // generous, sometimes a hair-trigger.
+  function rollTiers() {
+    const rand = (a, b) => a + Math.random() * (b - a);
+    let w = rand(0.06, 0.14);
+    let v = rand(0.24, 0.40);
+    let r = rand(0.52, 0.70);
+    let b = rand(0.78, 0.92);
+    // enforce minimum gaps so tiers never collapse
+    v = Math.max(v, w + 0.12);
+    r = Math.max(r, v + 0.14);
+    b = Math.max(b, r + 0.12);
+    if (b > 0.94) b = 0.94;
+    return { whisper: w, vision: v, revelation: r, omen: b };
+  }
+  // Different orbs grow at different rates: some accelerate, some stall —
+  // so even the gauge's visible speed is unpredictable.
+  function rollCurve() {
+    const k = Math.random();
+    if (k < 0.4) return { kind: 'linear', a: 0,    b: 1.0 };
+    if (k < 0.7) return { kind: 'accel',  a: 0.45, b: 1.4 };   // slow start, sudden surge
+    return            { kind: 'decel',  a: 1.55, b: -0.7 };   // fast start, stalls near brink
+  }
+  function curveMul(curve, d) {
+    return Math.max(0.25, curve.a + curve.b * d);
+  }
+  function tierAt(d, o) {
+    const t = o.tiers;
+    let key = null;
+    if (d >= t.omen) key = 'omen';
+    else if (d >= t.revelation) key = 'revelation';
+    else if (d >= t.vision) key = 'vision';
+    else if (d >= t.whisper) key = 'whisper';
+    if (!key) return null;
+    return { key, label: TIER_LABELS[key], score: TIER_SCORES[key], idx: TIER_IDX[key] };
   }
 
   // ----- DOM + Canvas --------------------------------------------------------
@@ -525,7 +737,9 @@
     pickRandomTheme();
     const o = {
       r: objRadius(),
-      fillMul: 0.82 + Math.random() * 0.5,    // how fast this orb yields (variety)
+      fillMul: 0.78 + Math.random() * 0.7,    // how fast this orb yields (wider variance)
+      tiers: rollTiers(),                      // randomized tier positions
+      curve: rollCurve(),                      // linear / accel / decel growth
       frozen: false,                           // true once a reading is locked
       cracks: [],
       spawnT: now,
@@ -786,7 +1000,7 @@
   function lockReading() {
     const o = state.obj;
     if (!o) return;
-    const T = tierAt(state.depth);
+    const T = tierAt(state.depth, o);
     if (!T) { return; }                       // too shallow — nothing read
     const lore = LORE[themeName];
     const r = pick(lore.tiers[T.key]);
@@ -794,7 +1008,7 @@
     state.phase = 'reveal';
     state.revealT = state.elapsed;
 
-    const deep = TIERS.indexOf(T) >= 1;       // Vision or better keeps the streak
+    const deep = T.idx >= 1;                  // Vision or better keeps the streak
     const now = state.elapsed;
     if (deep && now - state.lastReadT <= COMBO_WINDOW) state.combo++;
     else state.combo = deep ? 1 : 0;
@@ -814,9 +1028,9 @@
     state.flash = rare ? 0.7 : 0.4;
     state.bloom = rare ? 1 : 0.55;
     state.rings.push({ r: o.r * 0.5, life: 0.6, max: 0.6 });
-    audio.reveal(TIERS.indexOf(T), rare);
+    audio.reveal(T.idx, rare);
 
-    showCard(lore.name, r.v, r.l, T.label, rare ? 'rare' : '');
+    showCard(L(lore.name), L(r.v), L(r.l), L(T.label), rare ? 'rare' : '');
     updateHUD();
     if (window.CT_LB) window.CT_LB.submit(state.score, false);
   }
@@ -843,8 +1057,8 @@
       if (state.fever) { state.fever = false; feverEl.classList.remove('show'); }
       audio.reveal(0, false);
     }
-    showCard(LORE[themeName].name + ' · Shattered', r.v, r.l,
-             great ? 'Shattered Glory' : 'Shattered', great ? 'rare' : 'dire');
+    showCard(L(LORE[themeName].name) + L(UI.shatteredOf), L(r.v), L(r.l),
+             L(great ? UI.shatteredGlory : UI.shattered), great ? 'rare' : 'dire');
     updateHUD();
     if (window.CT_LB && great) window.CT_LB.submit(state.score, false);
   }
@@ -861,12 +1075,19 @@
   function updateHUD() {
     counterEl.textContent = state.score.toLocaleString('en-US');
     if (state.combo >= 2) {
-      comboEl.textContent = 'TRUE SIGHT ×' + state.combo;
+      comboEl.textContent = L(UI.trueSight) + ' ×' + state.combo;
       comboEl.classList.add('show');
     } else {
       comboEl.classList.remove('show');
     }
   }
+
+  // localise static HUD text once, on boot
+  labelEl.textContent = L(UI.fortune);
+  hintEl.textContent  = L(UI.hint);
+  feverEl.textContent = L(UI.trance);
+  const creditsEl = document.getElementById('credits');
+  if (creditsEl) creditsEl.textContent = L(UI.credits);
 
   // ----- Input ---------------------------------------------------------------
   let interacted = false;
@@ -1136,13 +1357,14 @@
     if (interacted) { demo.active = false; return; }
     if (state.phase !== 'reading' || !state.obj) { demo.charge = 0; return; }
     const o = state.obj;
-    state.depth += dt * DEPTH_RATE * o.fillMul;     // ghost finger holds
-    demo.charge = Math.min(1, state.depth / 0.7);
-    for (const cr of o.cracks) {                     // crackle as it builds
-      if (cr.revealAt > state.depth - dt * DEPTH_RATE * o.fillMul &&
-          cr.revealAt <= state.depth) { crackle(o, state.depth); break; }
+    const prev = state.depth;
+    state.depth += dt * DEPTH_RATE * o.fillMul * curveMul(o.curve, state.depth);
+    const releasePoint = o.tiers.revelation + (o.tiers.omen - o.tiers.revelation) * 0.4;
+    demo.charge = Math.min(1, state.depth / releasePoint);
+    for (const cr of o.cracks) {
+      if (cr.revealAt > prev && cr.revealAt <= state.depth) { crackle(o, state.depth); break; }
     }
-    if (state.depth >= 0.7) {                         // "release" at Revelation
+    if (state.depth >= releasePoint) {                // "release" mid-Revelation
       const lore = LORE[themeName];
       const r = pick(lore.tiers.revelation);
       o.frozen = true;
@@ -1151,7 +1373,7 @@
       state.flash = 0.4; state.bloom = 0.6;
       state.rings.push({ r: o.r * 0.5, life: 0.6, max: 0.6 });
       audio.reveal(2, false);
-      showCard(lore.name, r.v, r.l, 'Revelation', '');
+      showCard(L(lore.name), L(r.v), L(r.l), L(TIER_LABELS.revelation), '');
     }
   }
 
@@ -1328,7 +1550,7 @@
     const R = o.r * (0.4 + 0.6 * ease) * (1 + c * 0.05);
     const rr = R * 1.16;
     const TAU = Math.PI * 2, start = -Math.PI / 2;
-    const brink = 0.86;
+    const brink = o.tiers.omen;                  // brink position is per-orb random
     const inBrink = c >= brink;
     const pulse = inBrink ? 0.6 + Math.sin(state.elapsed * 20) * 0.4 : 1;
 
@@ -1341,25 +1563,29 @@
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // red danger arc (brink → full)
-    ctx.beginPath();
-    ctx.arc(cx, cy, rr, start + brink * TAU, start + TAU);
-    ctx.strokeStyle = '#ff4a3a';
-    ctx.globalAlpha = 0.28;
-    ctx.lineWidth = 3 * baseScale;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
+    // red danger arc — only revealed once the player crosses Revelation. The
+    // brink position varies per orb, so its exact start cannot be memorised.
+    if (c >= o.tiers.revelation) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, rr, start + brink * TAU, start + TAU);
+      ctx.strokeStyle = '#ff4a3a';
+      ctx.globalAlpha = 0.28 * Math.min(1, (c - o.tiers.revelation) / 0.06);
+      ctx.lineWidth = 3 * baseScale;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
 
-    // tier ticks (Vision, Revelation, Brink)
-    for (const T of TIERS) {
-      if (T.key === 'whisper') continue;
-      const a = start + T.min * TAU;
+    // tier ticks. Only the Omen/Brink tick is shown — and only once it is in
+    // sight (after Revelation). Vision/Revelation ticks are hidden so the
+    // player can't pre-aim at fixed positions.
+    if (c >= o.tiers.revelation) {
+      const a = start + brink * TAU;
       const r0 = rr - 6 * baseScale, r1 = rr + 6 * baseScale;
       ctx.beginPath();
       ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
       ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
-      ctx.strokeStyle = T.key === 'omen' ? '#ff5a45' : theme.rim;
-      ctx.globalAlpha = T.key === 'omen' ? 0.7 : 0.35;
+      ctx.strokeStyle = '#ff5a45';
+      ctx.globalAlpha = 0.75 * Math.min(1, (c - o.tiers.revelation) / 0.06);
       ctx.lineWidth = 2 * baseScale;
       ctx.stroke();
       ctx.globalAlpha = 1;
@@ -1576,7 +1802,7 @@
     const o = state.obj;
     if (o && state.holding && state.phase === 'reading') {
       const prev = state.depth;
-      state.depth += dt * DEPTH_RATE * o.fillMul;
+      state.depth += dt * DEPTH_RATE * o.fillMul * curveMul(o.curve, state.depth);
       const d = state.depth;
       audio.setChargeFreq(Math.min(1, d));
       // crackle each time a new branch opens
@@ -1584,8 +1810,8 @@
         if (cr.revealAt > prev && cr.revealAt <= d) { crackle(o, Math.min(1, d)); break; }
       }
       // tier-up cue
-      const pT = tierAt(prev), nT = tierAt(d);
-      if (nT && nT !== pT) {
+      const pT = tierAt(prev, o), nT = tierAt(d, o);
+      if (nT && (!pT || nT.key !== pT.key)) {
         state.flash = Math.max(state.flash, nT.key === 'omen' ? 0.45 : 0.22);
         state.rings.push({ r: o.r * 0.6, life: 0.45, max: 0.45 });
         audio.crackle(Math.min(1, d));
