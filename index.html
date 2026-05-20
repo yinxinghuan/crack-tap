@@ -9,7 +9,12 @@
 <link rel="icon" type="image/gif" href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" />
 <title>Crack Tap</title>
 <style>
-  :root { --bg: #060713; --accent: #9b6bff; }
+  :root {
+    --bg: #07060c;
+    --ink: #f5efe2;           /* warm ivory */
+    --accent: #d8c08a;        /* single soft gold for rare emphasis */
+    --serif: "Cormorant Garamond", "Iowan Old Style", "Hoefler Text", Georgia, "Times New Roman", serif;
+  }
   * {
     box-sizing: border-box; -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
@@ -17,8 +22,9 @@
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
     background: var(--bg);
-    color: #fff;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-weight: 400;
     overflow: hidden; user-select: none; touch-action: none;
     overscroll-behavior: none;
   }
@@ -33,77 +39,60 @@
     padding-top: env(safe-area-inset-top);
   }
   .hud .label {
-    margin-top: 22px; font-size: 20px; letter-spacing: 0.22em;
-    color: var(--accent); text-transform: uppercase;
-    text-shadow: 0 0 12px rgba(155,107,255,0.55);
-    transition: color 0.4s ease, text-shadow 0.4s ease;
+    margin-top: 24px; font-size: 10px; letter-spacing: 0.42em;
+    color: rgba(245,239,226,0.42); text-transform: uppercase;
+    font-weight: 500;
   }
   .hud .counter {
-    margin-top: 4px; font-size: 56px; font-weight: 700; line-height: 1;
-    color: #fff; letter-spacing: 0.02em;
-    text-shadow: 0 0 18px rgba(255,255,255,0.55), 0 0 38px rgba(155,107,255,0.35);
+    margin-top: 2px; font-size: 48px; font-weight: 500; line-height: 1.02;
+    color: var(--ink); letter-spacing: -0.005em;
     font-variant-numeric: tabular-nums;
+    font-feature-settings: "lnum", "tnum";
   }
   .hud .combo {
-    margin-top: 8px; font-size: 18px; font-weight: 800;
-    letter-spacing: 0.16em; color: #ffd36b;
-    text-shadow: 0 0 12px rgba(255,211,107,0.6);
+    margin-top: 6px; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.38em; color: var(--accent);
+    text-transform: uppercase;
     opacity: 0; transition: opacity 0.25s ease;
   }
   .hud .combo.show { opacity: 1; }
   .hud .hint {
-    margin-top: 16px; font-size: 13px; letter-spacing: 0.22em;
-    color: rgba(255,255,255,0.42);
-    animation: ct-pulse 2.4s ease-in-out infinite;
+    margin-top: 14px; font-size: 16px; font-style: italic;
+    color: rgba(245,239,226,0.32);
+    animation: ct-pulse 3.4s ease-in-out infinite;
   }
   .hud .hint.hidden { opacity: 0; animation: none; transition: opacity 0.6s ease; }
   .hud .fever {
     display: none;
-    margin-top: 14px; font-size: 22px; font-weight: 900;
-    color: #ff5a2b; letter-spacing: 0.24em;
-    text-shadow: 0 0 10px #ff5a2b, 0 0 22px rgba(255, 90, 43, 0.7);
-    animation: ct-pulse 0.8s ease-in-out infinite;
+    margin-top: 12px; font-size: 11px; font-weight: 500;
+    color: var(--accent); letter-spacing: 0.42em;
+    text-transform: uppercase;
+    animation: ct-pulse 1.4s ease-in-out infinite;
   }
   .hud .fever.show { display: block; }
   @keyframes ct-pulse {
-    0%, 100% { opacity: 0.5; }
+    0%, 100% { opacity: 0.55; }
     50%      { opacity: 1; }
   }
-  .theme-dots {
-    position: absolute; right: 14px; top: 14px;
-    display: flex; gap: 8px; padding: 8px;
-    pointer-events: auto;
-    padding-top: calc(8px + env(safe-area-inset-top));
-    z-index: 10;
-  }
-  .theme-dots .dot {
-    width: 14px; height: 14px; border-radius: 50%;
-    cursor: pointer; opacity: 0.5;
-    transition: transform 0.18s ease, opacity 0.18s ease;
-    box-shadow: 0 0 8px currentColor;
-  }
-  .theme-dots .dot.active { opacity: 1; transform: scale(1.18); }
-  .theme-dots .dot[data-t="crystal"] { background: #9b6bff; color: #9b6bff; }
-  .theme-dots .dot[data-t="ceramic"] { background: #e9a06b; color: #e9a06b; }
-  .theme-dots .dot[data-t="geode"]   { background: #ff7a2b; color: #ff7a2b; }
   .credits {
-    position: absolute; left: 0; right: 0; bottom: 16px;
-    text-align: center; color: rgba(255,255,255,0.18);
-    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    position: absolute; left: 0; right: 0; bottom: 12px;
+    text-align: center; color: rgba(245,239,226,0.18);
+    font-size: 11px; letter-spacing: 0.34em; text-transform: uppercase;
+    font-weight: 500;
     pointer-events: none; padding-bottom: env(safe-area-inset-bottom);
   }
 
-  /* leaderboard icon button (reused: HUD + win overlay) */
+  /* leaderboard icon button */
   .lb-icon-btn {
-    width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(155,107,255,0.35);
-    background: rgba(155,107,255,0.08); color: var(--accent);
-    font-size: 18px; line-height: 1; cursor: pointer;
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid rgba(216,192,138,0.28);
+    background: rgba(216,192,138,0.06); color: var(--accent);
+    font-size: 17px; line-height: 1; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 12px rgba(155,107,255,0.25);
     transition: background 0.15s, transform 0.08s;
   }
-  .lb-icon-btn:active { background: rgba(155,107,255,0.2); transform: scale(0.9); }
+  .lb-icon-btn:active { background: rgba(216,192,138,0.16); transform: scale(0.9); }
   .lb-hud {
     position: absolute; left: 14px; top: 14px;
     padding-top: calc(env(safe-area-inset-top));
@@ -125,10 +114,10 @@
   #lb-panel {
     width: 100%; max-width: 360px; max-height: 82vh;
     display: flex; flex-direction: column;
-    border-radius: 20px;
-    background: linear-gradient(160deg, rgba(20,16,40,0.98) 0%, rgba(8,6,18,0.98) 100%);
-    border: 1px solid rgba(155,107,255,0.18);
-    box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 30px rgba(155,107,255,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+    border-radius: 18px;
+    background: linear-gradient(160deg, rgba(20,16,12,0.96) 0%, rgba(8,7,5,0.98) 100%);
+    border: 1px solid rgba(216,192,138,0.14);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
     overflow: hidden;
     animation: lb-enter 0.32s cubic-bezier(0.34,1.4,0.64,1) both;
     font-family: inherit;
@@ -136,18 +125,17 @@
   #lb-overlay:not(.show) #lb-panel { animation: none; }
   .lb-hdr {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 18px 18px 14px;
-    border-bottom: 1px solid rgba(155,107,255,0.1);
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid rgba(216,192,138,0.08);
     flex-shrink: 0;
   }
   .lb-hdr-left { display: flex; align-items: center; gap: 10px; }
-  .lb-hdr-icon { font-size: 22px; filter: drop-shadow(0 0 10px rgba(155,107,255,0.6)); }
+  .lb-hdr-icon { font-size: 20px; opacity: 0.85; }
   .lb-hdr-title {
-    font-size: 14px; font-weight: 700; color: var(--accent);
-    letter-spacing: 0.22em; text-transform: uppercase;
-    text-shadow: 0 0 12px rgba(155,107,255,0.45);
+    font-size: 11px; font-weight: 500; color: var(--accent);
+    letter-spacing: 0.42em; text-transform: uppercase;
   }
-  .lb-hdr-game { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 2px; letter-spacing: 0.14em; }
+  .lb-hdr-game { font-size: 13px; color: rgba(245,239,226,0.45); margin-top: 2px; font-style: italic; }
   .lb-close {
     width: 30px; height: 30px; border-radius: 50%; border: none;
     background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.55);
@@ -160,14 +148,14 @@
   .lb-tabs { display: flex; gap: 6px; padding: 12px 14px 0; flex-shrink: 0; }
   .lb-tab {
     flex: 1; padding: 9px 8px; border: 1px solid transparent; border-radius: 10px;
-    font-size: 12px; font-weight: 600; cursor: pointer;
-    background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5);
-    font-family: inherit; letter-spacing: 0.16em; text-transform: uppercase;
+    font-size: 11px; font-weight: 500; cursor: pointer;
+    background: rgba(245,239,226,0.04); color: rgba(245,239,226,0.5);
+    font-family: inherit; letter-spacing: 0.32em; text-transform: uppercase;
     -webkit-tap-highlight-color: transparent; transition: background 0.2s, color 0.2s;
   }
   .lb-tab.active {
-    background: linear-gradient(135deg, rgba(155,107,255,0.18), rgba(120,90,255,0.1));
-    color: var(--accent); border-color: rgba(155,107,255,0.28);
+    background: rgba(216,192,138,0.10);
+    color: var(--accent); border-color: rgba(216,192,138,0.22);
   }
   .lb-body { flex: 1; overflow-y: auto; padding: 10px 12px 16px; -webkit-overflow-scrolling: touch; }
   .lb-body::-webkit-scrollbar { display: none; }
@@ -179,87 +167,77 @@
   .lb-state-text { font-size: 13px; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.5; letter-spacing: 0.08em; }
   .lb-spinner {
     display: block; width: 26px; height: 26px; border-radius: 50%;
-    border: 3px solid rgba(155,107,255,0.15); border-top-color: var(--accent);
+    border: 2px solid rgba(216,192,138,0.18); border-top-color: var(--accent);
     animation: lb-spin 0.8s linear infinite;
   }
   .lb-row {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 10px; border-radius: 12px; margin-bottom: 4px;
-    background: rgba(255,255,255,0.035);
+    padding: 8px 10px; border-radius: 10px; margin-bottom: 4px;
+    background: rgba(245,239,226,0.03);
   }
-  .lb-row.top { background: rgba(155,107,255,0.06); border: 1px solid rgba(155,107,255,0.1); }
-  .lb-row.me  { background: rgba(155,107,255,0.12); border: 1px solid rgba(155,107,255,0.35); }
+  .lb-row.top { background: rgba(216,192,138,0.06); border: 1px solid rgba(216,192,138,0.10); }
+  .lb-row.me  { background: rgba(216,192,138,0.14); border: 1px solid rgba(216,192,138,0.32); }
   .lb-row.clickable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .lb-row.clickable:active { background: rgba(155,107,255,0.16); transform: scale(0.98); }
+  .lb-row.clickable:active { background: rgba(216,192,138,0.16); transform: scale(0.98); }
   .lb-rank { width: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .lb-medal { font-size: 20px; line-height: 1; }
   .lb-num { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.35); font-variant-numeric: tabular-nums; }
   .lb-avatar {
     border-radius: 50%; overflow: hidden; flex-shrink: 0;
-    background: linear-gradient(135deg, #221a3a, #100a1e);
+    background: linear-gradient(135deg, #2a2418, #100c06);
     display: flex; align-items: center; justify-content: center;
-    font-weight: 700; color: var(--accent);
-    border: 1.5px solid rgba(155,107,255,0.25);
+    font-weight: 500; color: var(--accent);
+    border: 1px solid rgba(216,192,138,0.22);
   }
   .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .lb-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; overflow: hidden; }
-  .lb-name { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-name { font-size: 15px; font-weight: 500; color: rgba(245,239,226,0.94); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lb-me-tag {
-    font-size: 10px; font-weight: 700; color: var(--accent);
-    background: rgba(155,107,255,0.14); border-radius: 5px;
-    padding: 1px 6px; flex-shrink: 0; letter-spacing: 0.1em; text-transform: uppercase;
+    font-size: 9px; font-weight: 500; color: var(--accent);
+    background: rgba(216,192,138,0.12); border-radius: 4px;
+    padding: 1px 6px; flex-shrink: 0; letter-spacing: 0.2em; text-transform: uppercase;
   }
   .lb-score {
-    font-size: 15px; font-weight: 700; color: var(--accent);
+    font-size: 17px; font-weight: 500; color: var(--accent);
     font-variant-numeric: tabular-nums; flex-shrink: 0;
-    text-shadow: 0 0 10px rgba(155,107,255,0.35);
   }
+  .lb-num { font-size: 13px; font-weight: 500; color: rgba(245,239,226,0.32); font-variant-numeric: tabular-nums; }
   @keyframes lb-enter {
     from { opacity: 0; transform: translateY(20px) scale(0.96); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
   }
   @keyframes lb-spin { to { transform: rotate(360deg); } }
 
-  /* ── Fortune card (the reading reveal) ───────────────────────────────── */
+  /* ── Fortune card (the reading reveal) ──────────────────────────────────
+     Hierarchy by size & weight, not colour. Single typeface. Monochrome ivory
+     with one warm-ivory shift for rare; muted slate for dire. */
   .reading {
     position: absolute; left: 0; right: 0; bottom: 0;
-    padding: 26px 26px calc(34px + env(safe-area-inset-bottom));
+    padding: 28px 28px calc(42px + env(safe-area-inset-bottom));
     text-align: center; pointer-events: none;
-    opacity: 0; transform: translateY(26px);
-    transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.36,1);
+    opacity: 0; transform: translateY(22px);
+    transition: opacity .6s ease, transform .6s cubic-bezier(.22,1,.36,1);
   }
   .reading.show { opacity: 1; transform: translateY(0); }
   .reading .eyebrow {
-    font-size: 12px; letter-spacing: .34em; text-transform: uppercase;
-    color: rgba(255,255,255,.5); margin-bottom: 12px;
+    font-size: 10px; letter-spacing: .46em; text-transform: uppercase;
+    color: rgba(245,239,226,.34); margin-bottom: 14px;
+    font-weight: 500;
   }
   .reading .verdict {
-    font-family: "Cormorant Garamond", "Times New Roman", Georgia, serif;
-    font-size: 44px; font-weight: 600; line-height: 1.05;
-    color: #fff; margin: 0 0 6px;
-    text-shadow: 0 0 24px rgba(255,255,255,.35);
+    font-size: 54px; font-weight: 500; line-height: 1.02;
+    color: var(--ink); margin: 0;
+    letter-spacing: -0.012em;
   }
   .reading .line {
-    font-family: "Cormorant Garamond", "Times New Roman", Georgia, serif;
     font-size: 19px; font-style: italic; line-height: 1.45;
-    color: rgba(255,255,255,.72); max-width: 340px; margin: 8px auto 0;
+    color: rgba(245,239,226,.6); max-width: 320px; margin: 14px auto 0;
+    font-weight: 400;
   }
-  .reading .tier {
-    display: inline-block; margin-top: 16px;
-    font-size: 11px; letter-spacing: .28em; text-transform: uppercase;
-    color: var(--accent); padding: 4px 14px; border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
-  }
-  .reading.rare .verdict {
-    color: #ffe8a8; text-shadow: 0 0 30px rgba(255,200,90,.6);
-  }
-  .reading.rare .tier {
-    color: #ffd86b; border-color: rgba(255,200,90,.5);
-    background: rgba(255,200,90,.12);
-  }
-  .reading.dire .verdict { color: #ff8d6e; text-shadow: 0 0 28px rgba(255,80,60,.5); }
-  .reading.dire .tier { color: #ff8d6e; border-color: rgba(255,90,70,.45); background: rgba(255,80,60,.12); }
+  .reading.rare .verdict { color: #f3e6c4; }
+  .reading.rare .eyebrow { color: rgba(243,230,196,.55); }
+  .reading.dire .verdict { color: #a89c95; }
+  .reading.dire .line    { color: rgba(168,156,149,.6); }
 </style>
 </head>
 <body>
@@ -299,17 +277,10 @@
     </div>
   </div>
 
-  <div class="theme-dots" id="themeDots">
-    <div class="dot active" data-t="crystal"></div>
-    <div class="dot" data-t="ceramic"></div>
-    <div class="dot" data-t="geode"></div>
-  </div>
-
   <div class="reading" id="reading">
-    <div class="eyebrow" id="rdEyebrow">Oracle</div>
+    <div class="eyebrow" id="rdEyebrow"></div>
     <div class="verdict" id="rdVerdict">—</div>
     <div class="line" id="rdLine"></div>
-    <div class="tier" id="rdTier">Whisper</div>
   </div>
 
   <div class="credits">Read the cracks</div>
@@ -493,12 +464,10 @@
   const comboEl   = document.getElementById('combo');
   const hintEl    = document.getElementById('hint');
   const feverEl   = document.getElementById('fever');
-  const dotsEl    = document.getElementById('themeDots');
   const readingEl = document.getElementById('reading');
   const rdEyebrow = document.getElementById('rdEyebrow');
   const rdVerdict = document.getElementById('rdVerdict');
   const rdLine    = document.getElementById('rdLine');
-  const rdTier    = document.getElementById('rdTier');
 
   let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, baseScale = 1;
   function resize() {
@@ -553,6 +522,7 @@
   function objRadius() { return Math.min(W, H) * 0.245; }   // bigger crystal ball
 
   function spawnObject(now) {
+    pickRandomTheme();
     const o = {
       r: objRadius(),
       fillMul: 0.82 + Math.random() * 0.5,    // how fast this orb yields (variety)
@@ -798,11 +768,12 @@
     return (1 + Math.max(0, state.combo - 1) * 0.5) * (state.fever ? 1.5 : 1);
   }
 
-  function showCard(eyebrow, verdict, line, tierLabel, kind) {
-    rdEyebrow.textContent = eyebrow;
+  function showCard(tradition, verdict, line, tierLabel, kind) {
+    // Single eyebrow combines the tradition with the tier — one line, small
+    // caps, neutral. The verdict + italic line carry the meaning.
+    rdEyebrow.textContent = (tierLabel ? tierLabel + ' · ' : '') + tradition;
     rdVerdict.textContent = verdict;
     rdLine.textContent = line;
-    rdTier.textContent = tierLabel;
     readingEl.classList.remove('rare', 'dire');
     if (kind) readingEl.classList.add(kind);
     readingEl.classList.add('show');
@@ -925,23 +896,18 @@
   canvas.addEventListener('pointerup', onUp);
   canvas.addEventListener('pointercancel', onUp);
 
-  dotsEl.addEventListener('pointerdown', (e) => {
-    const t = e.target.closest('.dot');
-    if (!t) return;
-    const name = t.dataset.t;
-    if (!THEMES[name] || name === themeName) return;
-    themeName = name;
-    theme = THEMES[name];
-    applyTheme();
+  // Each new orb picks a random tradition — Tarot, Oracle Bone, or Runes.
+  // The UI chrome stays constant (fixed dark + ivory + single gold accent);
+  // only the orb's material changes, so the page never feels jittery.
+  function pickRandomTheme() {
+    const keys = Object.keys(THEMES);
+    let next = keys[(Math.random() * keys.length) | 0];
+    if (next === themeName && keys.length > 1) {
+      next = keys[(keys.indexOf(next) + 1 + (Math.random() * (keys.length - 1) | 0)) % keys.length];
+    }
+    themeName = next;
+    theme = THEMES[next];
     audio.onThemeChange();
-  });
-
-  function applyTheme() {
-    document.body.style.background = theme.bg;
-    document.documentElement.style.setProperty('--bg', theme.bg);
-    document.documentElement.style.setProperty('--accent', theme.accent);
-    [...dotsEl.children].forEach(d => d.classList.toggle('active', d.dataset.t === themeName));
-    if (state.obj) state.obj.tex = makeTexture(theme.tex);
   }
 
   // ----- Audio ---------------------------------------------------------------
@@ -1716,7 +1682,6 @@
   }
 
   // ----- Boot ----------------------------------------------------------------
-  applyTheme();
   spawnObject(0);
   requestAnimationFrame((t) => { lastT = t; tick(t); });
 
