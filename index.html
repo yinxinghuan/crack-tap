@@ -635,15 +635,14 @@
   // generous, sometimes a hair-trigger.
   function rollTiers() {
     const rand = (a, b) => a + Math.random() * (b - a);
-    let w = rand(0.06, 0.14);
-    let v = rand(0.24, 0.40);
-    let r = rand(0.52, 0.70);
-    let b = rand(0.78, 0.92);
-    // enforce minimum gaps so tiers never collapse
-    v = Math.max(v, w + 0.12);
-    r = Math.max(r, v + 0.14);
-    b = Math.max(b, r + 0.12);
-    if (b > 0.94) b = 0.94;
+    let w = rand(0.04, 0.10);          // Whisper almost immediate
+    let v = rand(0.18, 0.32);          // Vision arrives quick
+    let r = rand(0.42, 0.60);          // Revelation in the middle of a comfortable hold
+    let b = rand(0.70, 0.88);          // Brink window varies — sometimes hair-trigger
+    v = Math.max(v, w + 0.10);
+    r = Math.max(r, v + 0.12);
+    b = Math.max(b, r + 0.10);
+    if (b > 0.92) b = 0.92;
     return { whisper: w, vision: v, revelation: r, omen: b };
   }
   // Different orbs grow at different rates: some accelerate, some stall —
@@ -701,7 +700,7 @@
   let theme = THEMES[themeName];
 
   const CHARGE_TIME = 1.05;          // audio filter ramp reference only
-  const DEPTH_RATE = 0.42;           // depth gained per sec of hold (×fillMul)
+  const DEPTH_RATE = 0.95;           // depth gained per sec of hold (×fillMul × curve)
   const COMBO_WINDOW = 6.5;          // sec between readings to keep the streak
   const FEVER_COMBO = 4;             // deep-streak count that triggers Trance
   const SHARD_LIFE = 1.5;
