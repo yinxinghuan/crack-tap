@@ -339,8 +339,8 @@
     fortune:   { en: 'Fortune',     zh: '命数' },
     trueSight: { en: 'TRUE SIGHT',  zh: '通灵' },
     trance:    { en: 'TRANCE',      zh: '入定' },
-    hint:      { en: 'Hold to read · release before it shatters',
-                 zh: '按住读纹 · 临界之前松手' },
+    hint:      { en: 'Press the omen · release before it shatters',
+                 zh: '按入卜象 · 碎前松手' },
     credits:   { en: 'READ THE CRACKS', zh: '观纹问卜' },
     shatteredGlory: { en: 'Shattered Glory', zh: '碎中之辉' },
     shattered:      { en: 'Shattered',       zh: '凶碎' },
@@ -1351,19 +1351,28 @@
   // player lands here. Loop a ghost press→release on the idle object.
   // Attract loop: a ghost finger presses & holds, the ring fills, cracks
   // spider out, the orb bursts — the whole mechanic, on repeat, no scoring.
-  const demo = { active: true, charge: 0 };
+  // Attract demo runs on a SLOW tutorial timeline (decoupled from the
+  // ms-scale gameplay rate) so the player can clearly see the press → ring
+  // fill → cracks open → release → reveal cycle before they touch anything.
+  const demo = { active: true, charge: 0, t: 0 };
+  const DEMO_PRESS_SEC = 1.5;      // visible press duration
+  const DEMO_HOLD_SEC  = 0.35;     // brief hold at target before "release"
   function updateDemo(dt) {
     if (interacted) { demo.active = false; return; }
-    if (state.phase !== 'reading' || !state.obj) { demo.charge = 0; return; }
+    if (state.phase !== 'reading' || !state.obj) { demo.charge = 0; demo.t = 0; return; }
     const o = state.obj;
     const prev = state.depth;
-    state.depth += dt * DEPTH_RATE * o.fillMul * curveMul(o.curve, state.depth);
-    const releasePoint = o.tiers.revelation + (o.tiers.omen - o.tiers.revelation) * 0.4;
-    demo.charge = Math.min(1, state.depth / releasePoint);
-    for (const cr of o.cracks) {
-      if (cr.revealAt > prev && cr.revealAt <= state.depth) { crackle(o, state.depth); break; }
-    }
-    if (state.depth >= releasePoint) {                // "release" mid-Revelation
+    demo.t += dt;
+    const target = o.tiers.revelation + (o.tiers.omen - o.tiers.revelation) * 0.45;
+    if (demo.t <= DEMO_PRESS_SEC) {
+      // ease-in-out the press so it reads as a deliberate gesture
+      const u = demo.t / DEMO_PRESS_SEC;
+      const eased = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      state.depth = target * eased;
+    } else if (demo.t <= DEMO_PRESS_SEC + DEMO_HOLD_SEC) {
+      state.depth = target;
+    } else {
+      // release → reveal a Revelation reading (visual only, no scoring)
       const lore = LORE[themeName];
       const r = pick(lore.tiers.revelation);
       o.frozen = true;
@@ -1373,6 +1382,12 @@
       state.rings.push({ r: o.r * 0.5, life: 0.6, max: 0.6 });
       audio.reveal(2, false);
       showCard(L(lore.name), L(r.v), L(r.l), L(TIER_LABELS.revelation), '');
+      demo.t = 0;
+      return;
+    }
+    demo.charge = Math.min(1, state.depth / target);
+    for (const cr of o.cracks) {
+      if (cr.revealAt > prev && cr.revealAt <= state.depth) { crackle(o, state.depth); break; }
     }
   }
 
